@@ -27,7 +27,7 @@ export function VariableDrawer() {
     >
       <SheetContent
         side="right"
-        className="w-80 bg-card border-border"
+        className="w-[28rem] bg-card border-border"
       >
         <SheetHeader>
           <SheetTitle className="text-foreground">Variables</SheetTitle>
