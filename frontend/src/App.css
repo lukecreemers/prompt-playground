@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ── Light mode (default) ── */
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-background: hsl(220 10% 97%);
+  --color-foreground: hsl(220 20% 10%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(220 20% 10%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(220 20% 10%);
+  --color-primary: hsl(258 75% 58%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(220 10% 93%);
+  --color-secondary-foreground: hsl(220 20% 20%);
+  --color-muted: hsl(220 10% 94%);
+  --color-muted-foreground: hsl(220 10% 42%);
+  --color-accent: hsl(258 60% 95%);
+  --color-accent-foreground: hsl(258 70% 45%);
+  --color-destructive: hsl(0 72% 51%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(220 10% 88%);
+  --color-input: hsl(220 10% 88%);
+  --color-ring: hsl(258 75% 58%);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+/* ── Dark mode overrides ── */
+:root.dark {
+  --color-background: hsl(225 6% 13%);
+  --color-foreground: hsl(210 20% 95%);
+  --color-card: hsl(228 6% 17%);
+  --color-card-foreground: hsl(210 20% 95%);
+  --color-popover: hsl(228 6% 17%);
+  --color-popover-foreground: hsl(210 20% 95%);
+  --color-primary: hsl(258 75% 62%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(225 6% 22%);
+  --color-secondary-foreground: hsl(210 15% 75%);
+  --color-muted: hsl(225 6% 20%);
+  --color-muted-foreground: hsl(220 10% 55%);
+  --color-accent: hsl(258 40% 22%);
+  --color-accent-foreground: hsl(258 80% 80%);
+  --color-destructive: hsl(0 72% 51%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(225 6% 24%);
+  --color-input: hsl(225 6% 24%);
+  --color-ring: hsl(258 75% 62%);
+}
+
+/* Smooth transitions on non-input elements */
+*:not(input):not(textarea):not(pre):not(code) {
+  transition-property: color, background-color, border-color, box-shadow, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::selection {
+  background: hsl(258 60% 50% / 0.3);
+}
+.dark ::selection {
+  background: hsl(258 60% 40% / 0.5);
+  color: hsl(0 0% 100%);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 80%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 10% 70%);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(225 6% 30%);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(225 6% 40%);
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Status badge utilities ── */
+.status-idle {
+  @apply bg-muted text-muted-foreground;
+}
+
+.status-running {
+  background: hsl(258 60% 94%);
+  color: hsl(258 70% 50%);
+  border-color: hsl(258 50% 82%);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.dark .status-running {
+  background: hsl(258 60% 20%);
+  color: hsl(258 80% 80%);
+  border-color: hsl(258 40% 35%);
+}
+
+.status-completed {
+  background: hsl(152 50% 93%);
+  color: hsl(152 60% 32%);
+  border-color: hsl(152 40% 78%);
+}
+.dark .status-completed {
+  background: hsl(152 50% 14%);
+  color: hsl(152 60% 65%);
+  border-color: hsl(152 40% 25%);
+}
+
+.status-failed {
+  background: hsl(0 60% 95%);
+  color: hsl(0 70% 45%);
+  border-color: hsl(0 50% 82%);
+}
+.dark .status-failed {
+  background: hsl(0 50% 16%);
+  color: hsl(0 70% 70%);
+  border-color: hsl(0 40% 30%);
+}
+
+/* Panel surface */
+.surface-panel {
+  @apply bg-card rounded-xl border border-border;
+  box-shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.06), 0 1px 2px -1px hsl(0 0% 0% / 0.06);
+}
+.dark .surface-panel {
+  box-shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
+}
+
+/* Section header style */
+.section-label {
+  @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
+  letter-spacing: 0.08em;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(258 75% 58% / 0.4);
+}
+.dark *:focus-visible {
+  box-shadow: 0 0 0 2px hsl(258 75% 62% / 0.5);
+}
