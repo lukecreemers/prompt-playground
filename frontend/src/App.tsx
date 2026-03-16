@@ -29,8 +29,17 @@ function App() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <AppHeader />
-      <main className="flex-1 overflow-hidden p-3 pt-3">
-        {activeTab === "tester" ? <PromptTesterTab /> : <TestCasesTab />}
+      <main className="flex-1 overflow-hidden p-3 pt-3 relative">
+        <div className={activeTab === "tester"
+          ? "absolute inset-0 p-3 pt-3"
+          : "absolute inset-0 p-3 pt-3 invisible"}>
+          <PromptTesterTab />
+        </div>
+        <div className={activeTab === "test-cases"
+          ? "absolute inset-0 p-3 pt-3"
+          : "absolute inset-0 p-3 pt-3 invisible"}>
+          <TestCasesTab />
+        </div>
       </main>
       <Toaster />
     </div>

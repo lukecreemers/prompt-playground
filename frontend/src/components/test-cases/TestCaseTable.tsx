@@ -168,7 +168,7 @@ export function TestCaseTable() {
 
   return (
     <Table>
-      <TableHeader className="sticky top-0 bg-card/95 backdrop-blur-sm z-10">
+      <TableHeader className="sticky top-0 bg-muted/50 backdrop-blur-sm z-10">
         {table.getHeaderGroups().map((hg) => (
           <TableRow key={hg.id} className="border-border hover:bg-transparent">
             {hg.headers.map((header) => (

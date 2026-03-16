@@ -6,7 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAutoSave } from "@/hooks/useAutoSave";
 
@@ -44,11 +44,11 @@ export function VariableDrawer() {
                 className="flex flex-col gap-2"
               >
                 <Label className="text-xs text-accent-foreground font-mono">{`{{${key}}}`}</Label>
-                <Input
+                <Textarea
                   value={testerVariables[key] || ""}
                   onChange={(e) => setTesterVariable(key, e.target.value)}
                   placeholder={`Value for ${key}`}
-                  className="text-sm bg-muted/40 border-border/50 focus:border-primary/30"
+                  className="text-sm bg-muted/40 border-border/50 focus:border-primary/30 h-[120px] resize-none"
                 />
               </div>
             ))

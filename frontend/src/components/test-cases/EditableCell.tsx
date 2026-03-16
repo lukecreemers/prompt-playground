@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useStore } from '@/store';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface EditableCellProps {
   testCaseId: string;
@@ -25,20 +25,19 @@ export function EditableCell({ testCaseId, variableKey }: EditableCellProps) {
 
   if (editing) {
     return (
-      <Input
+      <Textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleBlur}
-        onKeyDown={(e) => e.key === 'Enter' && handleBlur()}
         autoFocus
-        className="h-7 text-sm bg-muted/60 border-border/50"
+        className="text-sm bg-muted/60 border-border/50 h-[120px] resize-none"
       />
     );
   }
 
   return (
     <div
-      className="text-sm cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md min-h-[28px] break-words line-clamp-3"
+      className="text-sm cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md h-[120px] break-words whitespace-pre-wrap overflow-y-auto"
       onClick={() => setEditing(true)}
     >
       {value || <span className="text-muted-foreground/50">click to edit</span>}

@@ -56,8 +56,8 @@
   --color-ring: hsl(258 75% 62%);
 }
 
-/* Smooth transitions on non-input elements */
-*:not(input):not(textarea):not(pre):not(code) {
+/* Smooth transitions on non-input elements (skip hidden tab panels to avoid mass reflow) */
+*:not(input):not(textarea):not(pre):not(code):not(.hidden *) {
   transition-property: color, background-color, border-color, box-shadow, opacity;
   transition-duration: 150ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);

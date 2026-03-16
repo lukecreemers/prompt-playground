@@ -26,7 +26,7 @@ export const StreamingOutputCell = React.memo(function StreamingOutputCell({
   return (
     <>
       <div
-        className="text-sm cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md min-h-[28px] break-words line-clamp-3"
+        className="text-sm cursor-pointer hover:bg-muted/50 px-2 py-1.5 rounded-md h-[120px] break-words whitespace-pre-wrap overflow-y-auto"
         onClick={() => value && setModalOpen(true)}
       >
         {truncated || (
