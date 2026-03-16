@@ -93,6 +93,8 @@ export class RunnerController {
         modelName: prompt.evalModelName || prompt.modelName,
         temperature: prompt.evalTemperature ?? 0,
         maxTokens: prompt.evalMaxTokens ?? 2048,
+        thinkingEnabled: prompt.evalThinkingEnabled,
+        thinkingBudget: prompt.evalThinkingBudget,
       };
       await this.evalRunner.runEvals(
         prompt.evalPrompt,

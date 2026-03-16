@@ -11,6 +11,8 @@ export interface Prompt {
   evalModelName: string | null;
   evalTemperature: number | null;
   evalMaxTokens: number | null;
+  evalThinkingEnabled: number | null;
+  evalThinkingBudget: number | null;
   concurrencyLimit: number;
   createdAt: string;
   updatedAt: string;

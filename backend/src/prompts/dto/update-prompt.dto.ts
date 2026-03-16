@@ -53,6 +53,14 @@ export class UpdatePromptDto {
 
   @IsOptional()
   @IsInt()
+  evalThinkingEnabled?: number;
+
+  @IsOptional()
+  @IsInt()
+  evalThinkingBudget?: number;
+
+  @IsOptional()
+  @IsInt()
   @Min(1)
   @Max(20)
   concurrencyLimit?: number;

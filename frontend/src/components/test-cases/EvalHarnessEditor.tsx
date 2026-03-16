@@ -4,6 +4,7 @@ import { ChevronRight, FlaskConical, Settings2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -96,6 +97,30 @@ export function EvalHarnessEditor() {
                     className="h-7 text-xs"
                   />
                 </div>
+
+                <div className="flex items-center justify-between py-0.5">
+                  <Label className="text-xs text-muted-foreground">Extended Thinking</Label>
+                  <Switch
+                    checked={!!activePrompt.evalThinkingEnabled}
+                    onCheckedChange={(v) => updatePrompt({
+                      evalThinkingEnabled: v ? 1 : 0,
+                      evalTemperature: v ? 1 : activePrompt.evalTemperature,
+                    } as any)}
+                  />
+                </div>
+
+                {!!activePrompt.evalThinkingEnabled && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Thinking Budget</Label>
+                    <Input
+                      type="number"
+                      value={activePrompt.evalThinkingBudget || ''}
+                      placeholder="Auto"
+                      onChange={(e) => updatePrompt({ evalThinkingBudget: parseInt(e.target.value) || null } as any)}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                )}
               </div>
             </PopoverContent>
           </Popover>

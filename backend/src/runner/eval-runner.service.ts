@@ -19,7 +19,7 @@ export class EvalRunnerService {
     evalPrompt: string,
     promptContent: string,
     testCases: TestCase[],
-    evalConfig: { modelName: string; temperature: number; maxTokens: number },
+    evalConfig: { modelName: string; temperature: number; maxTokens: number; thinkingEnabled?: number | null; thinkingBudget?: number | null },
     concurrencyLimit: number,
     res: Response,
     send: (event: string, data: any) => void,
@@ -43,6 +43,9 @@ export class EvalRunnerService {
             prompt: interpolated,
             temperature: evalConfig.temperature,
             maxTokens: evalConfig.maxTokens,
+            thinking: evalConfig.thinkingEnabled
+              ? { enabled: true, budgetTokens: evalConfig.thinkingBudget || undefined }
+              : undefined,
           };
 
           try {

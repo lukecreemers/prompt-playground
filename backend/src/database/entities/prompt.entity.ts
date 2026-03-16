@@ -40,6 +40,12 @@ export class Prompt {
   @Column({ type: 'integer', nullable: true })
   evalMaxTokens: number | null;
 
+  @Column({ type: 'integer', nullable: true })
+  evalThinkingEnabled: number | null;
+
+  @Column({ type: 'integer', nullable: true })
+  evalThinkingBudget: number | null;
+
   @Column({ type: 'integer', default: 5 })
   concurrencyLimit: number;
 
