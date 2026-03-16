@@ -19,7 +19,7 @@ export class EvalRunnerService {
     evalPrompt: string,
     promptContent: string,
     testCases: TestCase[],
-    modelName: string,
+    evalConfig: { modelName: string; temperature: number; maxTokens: number },
     concurrencyLimit: number,
     res: Response,
     send: (event: string, data: any) => void,
@@ -39,10 +39,10 @@ export class EvalRunnerService {
           });
 
           const request: LlmRequest = {
-            model: modelName,
+            model: evalConfig.modelName,
             prompt: interpolated,
-            temperature: 0,
-            maxTokens: 2048,
+            temperature: evalConfig.temperature,
+            maxTokens: evalConfig.maxTokens,
           };
 
           try {

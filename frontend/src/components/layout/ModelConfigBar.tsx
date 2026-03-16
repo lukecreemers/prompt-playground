@@ -47,62 +47,71 @@ export function ModelConfigBar() {
             <TooltipContent>Model settings</TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <PopoverContent className="w-72 space-y-4" align="end">
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Temperature: {activePrompt.temperature}</Label>
-            <Slider
-              min={0}
-              max={2}
-              step={0.1}
-              value={[activePrompt.temperature]}
-              onValueChange={([v]) => updatePrompt({ temperature: v })}
-            />
+        <PopoverContent className="w-72 p-0" align="end">
+          <div className="px-3 py-2 border-b border-border">
+            <p className="text-sm font-medium">Model Settings</p>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Max Tokens</Label>
-            <Input
-              type="number"
-              value={activePrompt.maxTokens}
-              onChange={(e) => updatePrompt({ maxTokens: parseInt(e.target.value) || 4096 })}
-              className="h-8 text-sm"
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">Extended Thinking</Label>
-            <Switch
-              checked={!!activePrompt.thinkingEnabled}
-              onCheckedChange={(v) => updatePrompt({
-                thinkingEnabled: v ? 1 : 0,
-                temperature: v ? 1 : activePrompt.temperature,
-              })}
-            />
-          </div>
-
-          {!!activePrompt.thinkingEnabled && (
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Thinking Budget (tokens)</Label>
-              <Input
-                type="number"
-                value={activePrompt.thinkingBudget || ''}
-                placeholder="Auto"
-                onChange={(e) => updatePrompt({ thinkingBudget: parseInt(e.target.value) || null })}
-                className="h-8 text-sm"
+          <div className="p-3 space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Temperature</Label>
+                <span className="text-xs tabular-nums text-muted-foreground">{activePrompt.temperature}</span>
+              </div>
+              <Slider
+                min={0}
+                max={2}
+                step={0.1}
+                value={[activePrompt.temperature]}
+                onValueChange={([v]) => updatePrompt({ temperature: v })}
               />
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Concurrency Limit</Label>
-            <Input
-              type="number"
-              min="1"
-              max="20"
-              value={activePrompt.concurrencyLimit}
-              onChange={(e) => updatePrompt({ concurrencyLimit: parseInt(e.target.value) || 5 })}
-              className="h-8 text-sm"
-            />
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Max Tokens</Label>
+              <Input
+                type="number"
+                value={activePrompt.maxTokens}
+                onChange={(e) => updatePrompt({ maxTokens: parseInt(e.target.value) || 4096 })}
+                className="h-7 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-0.5">
+              <Label className="text-xs text-muted-foreground">Extended Thinking</Label>
+              <Switch
+                checked={!!activePrompt.thinkingEnabled}
+                onCheckedChange={(v) => updatePrompt({
+                  thinkingEnabled: v ? 1 : 0,
+                  temperature: v ? 1 : activePrompt.temperature,
+                })}
+              />
+            </div>
+
+            {!!activePrompt.thinkingEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Thinking Budget</Label>
+                <Input
+                  type="number"
+                  value={activePrompt.thinkingBudget || ''}
+                  placeholder="Auto"
+                  onChange={(e) => updatePrompt({ thinkingBudget: parseInt(e.target.value) || null })}
+                  className="h-7 text-xs"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Concurrency Limit</Label>
+              <Input
+                type="number"
+                min="1"
+                max="20"
+                value={activePrompt.concurrencyLimit}
+                onChange={(e) => updatePrompt({ concurrencyLimit: parseInt(e.target.value) || 5 })}
+                className="h-7 text-xs"
+              />
+            </div>
           </div>
         </PopoverContent>
       </Popover>

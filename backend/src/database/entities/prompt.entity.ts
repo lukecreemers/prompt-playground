@@ -31,6 +31,15 @@ export class Prompt {
   @Column({ type: 'integer', nullable: true })
   thinkingBudget: number | null;
 
+  @Column({ type: 'text', nullable: true })
+  evalModelName: string | null;
+
+  @Column({ type: 'real', nullable: true })
+  evalTemperature: number | null;
+
+  @Column({ type: 'integer', nullable: true })
+  evalMaxTokens: number | null;
+
   @Column({ type: 'integer', default: 5 })
   concurrencyLimit: number;
 

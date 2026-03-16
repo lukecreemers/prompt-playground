@@ -3,7 +3,8 @@ import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { ChevronDown, Plus, MoreHorizontal, Trash2 } from 'lucide-react';
 
 export function PromptNameEditor() {
   const activePrompt = useStore((s) => s.activePrompt);
@@ -49,20 +50,33 @@ export function PromptNameEditor() {
             {prompts.map((p) => (
               <div
                 key={p.id}
-                className={`flex items-center justify-between px-2.5 py-1.5 rounded-md text-sm cursor-pointer hover:bg-muted ${
+                className={`group flex items-center justify-between px-2.5 py-1.5 rounded-md text-sm cursor-pointer hover:bg-muted ${
                   p.id === activePrompt.id ? 'bg-accent text-accent-foreground border-l-2 border-primary' : ''
                 }`}
                 onClick={() => { setActivePrompt(p.id); setOpen(false); }}
               >
                 <span className="truncate">{p.name}</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:opacity-100 hover:text-destructive"
-                  onClick={(e) => { e.stopPropagation(); deletePrompt(p.id); }}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); deletePrompt(p.id); }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             ))}
             <div className="border-t border-border mt-1 pt-1">

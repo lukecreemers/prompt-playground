@@ -8,6 +8,9 @@ export interface Prompt {
   maxTokens: number;
   thinkingEnabled: number;
   thinkingBudget: number | null;
+  evalModelName: string | null;
+  evalTemperature: number | null;
+  evalMaxTokens: number | null;
   concurrencyLimit: number;
   createdAt: string;
   updatedAt: string;

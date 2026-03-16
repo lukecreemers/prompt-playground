@@ -1,14 +1,26 @@
 import { useState } from 'react';
 import { useStore } from '@/store';
-import { Textarea } from '@/components/ui/textarea';
-import { ChevronRight, FlaskConical } from 'lucide-react';
+import { ChevronRight, FlaskConical, Settings2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { EvalPromptInput } from './EvalPromptInput';
 
 export function EvalHarnessEditor() {
   const activePrompt = useStore((s) => s.activePrompt);
   const updatePrompt = useStore((s) => s.updatePrompt);
+  const models = useStore((s) => s.models);
   const [open, setOpen] = useState(false);
 
   if (!activePrompt) return null;
+
+  const evalModelValue = activePrompt.evalModelName || '__inherit__';
+  const evalTemp = activePrompt.evalTemperature ?? 0;
+  const evalMaxTok = activePrompt.evalMaxTokens ?? 2048;
 
   return (
     <div className="border-b border-border">
@@ -22,17 +34,84 @@ export function EvalHarnessEditor() {
         {activePrompt.evalPrompt && (
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 ml-1" />
         )}
+
+        {/* Model select & settings -- stop click from toggling accordion */}
+        <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <Select
+            value={evalModelValue}
+            onValueChange={(v) => updatePrompt({ evalModelName: v === '__inherit__' ? null : v } as any)}
+          >
+            <SelectTrigger className="h-8 w-44 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__inherit__">
+                Use prompt model
+              </SelectItem>
+              {models.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Popover>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Settings2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Eval model settings</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <PopoverContent className="w-72 p-0" align="end">
+              <div className="px-3 py-2 border-b border-border">
+                <p className="text-sm font-medium">Eval Model Settings</p>
+              </div>
+              <div className="p-3 space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Temperature</Label>
+                    <span className="text-xs tabular-nums text-muted-foreground">{evalTemp}</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={[evalTemp]}
+                    onValueChange={([v]) => updatePrompt({ evalTemperature: v } as any)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Max Tokens</Label>
+                  <Input
+                    type="number"
+                    value={evalMaxTok}
+                    onChange={(e) => updatePrompt({ evalMaxTokens: parseInt(e.target.value) || 2048 } as any)}
+                    className="h-7 text-xs"
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </button>
       {open && (
         <div className="px-4 pb-3">
           <p className="text-xs text-muted-foreground mb-2">
-            Available placeholders: {'{{output}}'}, {'{{prompt}}'}, {'{{variables}}'}, or any variable name like {'{{name}}'}.
+            Available placeholders: {'{{output}}'}, {'{{prompt}}'}, {'{{variables}}'}, or any variable name like {'{{name}}'}. Type {'{{'}  to autocomplete.
           </p>
-          <Textarea
+
+          <EvalPromptInput
             value={activePrompt.evalPrompt || ''}
-            onChange={(e) => updatePrompt({ evalPrompt: e.target.value })}
-            placeholder="Rate the following output on a scale of 1-10:\n\nPrompt: {{prompt}}\nOutput: {{output}}"
-            className="font-mono text-sm min-h-[100px] bg-muted/40 border-border/50 focus:border-primary/30"
+            onChange={(v) => updatePrompt({ evalPrompt: v })}
+            placeholder="Rate the following output on a scale of 1-10:&#10;&#10;Prompt: {{prompt}}&#10;Output: {{output}}"
+            className="bg-muted/40"
           />
         </div>
       )}

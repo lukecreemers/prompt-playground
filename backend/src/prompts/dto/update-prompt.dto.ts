@@ -37,6 +37,21 @@ export class UpdatePromptDto {
   thinkingBudget?: number;
 
   @IsOptional()
+  @IsString()
+  evalModelName?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(2)
+  evalTemperature?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  evalMaxTokens?: number;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Max(20)

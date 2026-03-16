@@ -89,11 +89,16 @@ export class RunnerController {
       const completedCases = updatedCases.filter((tc) =>
         body.testCaseIds ? body.testCaseIds.includes(tc.id) : true,
       );
+      const evalConfig = {
+        modelName: prompt.evalModelName || prompt.modelName,
+        temperature: prompt.evalTemperature ?? 0,
+        maxTokens: prompt.evalMaxTokens ?? 2048,
+      };
       await this.evalRunner.runEvals(
         prompt.evalPrompt,
         prompt.content,
         completedCases,
-        prompt.modelName,
+        evalConfig,
         prompt.concurrencyLimit,
         res,
         send,
