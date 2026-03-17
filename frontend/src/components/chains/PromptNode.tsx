@@ -36,6 +36,11 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
     } else {
       updateConfig(id, { ...config, promptId });
     }
+
+    // Remove edges targeting handles that no longer exist on the new prompt
+    const newVars = prompt ? new Set(detectVariables(prompt.content)) : new Set<string>();
+    const { chainEdges, setChainEdges } = useStore.getState();
+    setChainEdges(chainEdges.filter((e) => e.target !== id || newVars.has(e.targetHandle ?? '')));
   }, [id, config, prompts, updateConfig]);
 
   // Resizable output area
