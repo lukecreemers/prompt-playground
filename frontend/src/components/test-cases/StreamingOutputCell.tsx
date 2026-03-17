@@ -19,6 +19,10 @@ export const StreamingOutputCell = React.memo(function StreamingOutputCell({
     const tc = s.testCases[testCaseId];
     return tc?.status || 'idle';
   });
+  const evalStatus = useStore((s) => {
+    const tc = s.testCases[testCaseId];
+    return tc?.evalStatus || 'idle';
+  });
   const [modalOpen, setModalOpen] = useState(false);
 
   const truncated = value.length > 100 ? value.slice(0, 100) + '...' : value;
@@ -30,7 +34,7 @@ export const StreamingOutputCell = React.memo(function StreamingOutputCell({
         onClick={() => value && setModalOpen(true)}
       >
         {truncated || (
-          status === 'running' ? (
+          (status === 'running' || (field === 'evalResult' && evalStatus === 'running')) ? (
             <span className="text-primary/60 inline-flex items-center">
               <span className="animate-pulse">|</span>
             </span>

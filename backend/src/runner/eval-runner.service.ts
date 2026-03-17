@@ -49,6 +49,7 @@ export class EvalRunnerService {
           };
 
           try {
+            send('eval_start', { testCaseId: tc.id });
             const result = await this.ai.complete(request);
             await this.tcRepo.update(tc.id, { evalResult: result });
             send('case_eval_done', { testCaseId: tc.id, evalResult: result });

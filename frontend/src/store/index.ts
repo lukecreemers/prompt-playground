@@ -52,6 +52,7 @@ interface AppState {
   setTestCaseOutput: (id: string, field: 'output' | 'thinking' | 'evalResult', value: string) => void;
   appendTestCaseOutput: (id: string, field: 'output' | 'thinking', content: string) => void;
   setTestCaseStatus: (id: string, status: TestCase['status']) => void;
+  setTestCaseEvalStatus: (id: string, evalStatus: TestCase['evalStatus']) => void;
 
   setTesterResponse: (text: string) => void;
   appendTesterResponse: (text: string) => void;
@@ -240,6 +241,14 @@ export const useStore = create<AppState>()(
       set((s) => {
         if (s.testCases[tcId]) {
           s.testCases[tcId].status = status;
+        }
+      });
+    },
+
+    setTestCaseEvalStatus: (tcId, evalStatus) => {
+      set((s) => {
+        if (s.testCases[tcId]) {
+          s.testCases[tcId].evalStatus = evalStatus;
         }
       });
     },

@@ -32,6 +32,7 @@ export interface TestCase {
   output: string | null;
   thinking: string | null;
   evalResult: string | null;
+  evalStatus: 'idle' | 'running' | 'completed';
   status: 'idle' | 'running' | 'completed' | 'failed';
   createdAt: string;
 }

@@ -49,8 +49,47 @@ export function TestCaseToolbar() {
               s.setTestCaseStatus(data.testCaseId, 'failed');
               s.setTestCaseOutput(data.testCaseId, 'output', data.error);
               break;
+            case 'eval_start':
+              s.setTestCaseEvalStatus(data.testCaseId, 'running');
+              s.setTestCaseOutput(data.testCaseId, 'evalResult', '');
+              break;
             case 'case_eval_done':
               s.setTestCaseOutput(data.testCaseId, 'evalResult', data.evalResult);
+              s.setTestCaseEvalStatus(data.testCaseId, 'completed');
+              break;
+          }
+        },
+      },
+    );
+  };
+
+  const runEvalOnly = (ids?: string[]) => {
+    if (!activePromptId) return;
+
+    const testCaseIds = ids || Object.keys(selectedIds);
+    const targetIds = testCaseIds.filter((id) => testCases[id]?.output);
+    if (targetIds.length === 0) return;
+
+    const store = useStore.getState();
+    for (const id of targetIds) {
+      store.setTestCaseEvalStatus(id, 'running');
+      store.setTestCaseOutput(id, 'evalResult', '');
+    }
+
+    createSSEStream(
+      `/api/prompts/${activePromptId}/run-eval`,
+      { testCaseIds: targetIds },
+      {
+        onEvent: (event, data) => {
+          const s = useStore.getState();
+          switch (event) {
+            case 'eval_start':
+              s.setTestCaseEvalStatus(data.testCaseId, 'running');
+              s.setTestCaseOutput(data.testCaseId, 'evalResult', '');
+              break;
+            case 'case_eval_done':
+              s.setTestCaseOutput(data.testCaseId, 'evalResult', data.evalResult);
+              s.setTestCaseEvalStatus(data.testCaseId, 'completed');
               break;
           }
         },
@@ -84,6 +123,17 @@ export function TestCaseToolbar() {
       >
         <FlaskConical className="h-3 w-3" />
         Run with Eval
+      </Button>
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs gap-1.5"
+        onClick={() => runEvalOnly(hasSelected ? selectedKeys : allIds)}
+        disabled={allIds.length === 0}
+      >
+        <FlaskConical className="h-3 w-3" />
+        {hasSelected ? `Eval Selected (${selectedKeys.length})` : 'Eval All'}
       </Button>
 
       <CsvUploadButton />

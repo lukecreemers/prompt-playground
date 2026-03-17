@@ -113,6 +113,62 @@ export class RunnerController {
     }
   }
 
+  @Post('prompts/:id/run-eval')
+  async runEvalOnly(
+    @Param('id') id: string,
+    @Body() body: { testCaseIds?: string[] },
+    @Res() res: Response,
+  ) {
+    const prompt = await this.promptsService.findOne(id);
+    if (!prompt.evalPrompt) {
+      res.status(400).json({ message: 'No eval prompt configured' });
+      return;
+    }
+
+    let testCases = await this.testCasesService.findByPromptId(id);
+    if (body.testCaseIds && body.testCaseIds.length > 0) {
+      testCases = testCases.filter((tc) => body.testCaseIds!.includes(tc.id));
+    }
+    testCases = testCases.filter((tc) => tc.output);
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    let closed = false;
+    res.on('close', () => { closed = true; });
+
+    const send = (event: string, data: any) => {
+      if (!closed) {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      }
+    };
+
+    const evalConfig = {
+      modelName: prompt.evalModelName || prompt.modelName,
+      temperature: prompt.evalTemperature ?? 0,
+      maxTokens: prompt.evalMaxTokens ?? 2048,
+      thinkingEnabled: prompt.evalThinkingEnabled,
+      thinkingBudget: prompt.evalThinkingBudget,
+    };
+
+    await this.evalRunner.runEvals(
+      prompt.evalPrompt,
+      prompt.content,
+      testCases,
+      evalConfig,
+      prompt.concurrencyLimit,
+      res,
+      send,
+    );
+
+    if (!closed) {
+      send('eval_batch_done', { summary: { total: testCases.length } });
+      res.end();
+    }
+  }
+
   @Get('models')
   getModels() {
     return this.aiService.getModels();
