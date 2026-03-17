@@ -117,7 +117,7 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
         </div>
         {/* Resize handle */}
         <div
-          className="h-2 cursor-row-resize flex items-center justify-center"
+          className="nodrag h-2 cursor-row-resize flex items-center justify-center"
           onMouseDown={handleResizeStart}
         >
           <div className="w-8 h-0.5 bg-border rounded" />

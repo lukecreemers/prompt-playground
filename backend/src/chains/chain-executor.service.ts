@@ -9,17 +9,36 @@ type SendFn = (event: string, data: any) => void;
 
 @Injectable()
 export class ChainExecutorService {
+  private activeRuns = new Map<string, AbortController>();
+
   constructor(
     private readonly ai: AiService,
     private readonly promptsService: PromptsService,
   ) {}
 
+  stop(chainId: string): void {
+    const controller = this.activeRuns.get(chainId);
+    if (controller) {
+      controller.abort();
+      this.activeRuns.delete(chainId);
+    }
+  }
+
   async execute(
+    chainId: string,
     nodes: ChainNode[],
     edges: ChainEdge[],
     send: SendFn,
     isClosed: () => boolean,
   ): Promise<void> {
+    // Abort any previous run for this chain
+    this.stop(chainId);
+
+    const abortController = new AbortController();
+    this.activeRuns.set(chainId, abortController);
+    const signal = abortController.signal;
+
+    const cancelled = () => signal.aborted || isClosed();
     // Build adjacency maps
     const inbound = new Map<string, ChainEdge[]>(); // targetNodeId -> edges
     const outbound = new Map<string, ChainEdge[]>(); // sourceNodeId -> edges
@@ -88,7 +107,7 @@ export class ChainExecutorService {
     }
 
     const fireNode = async (nodeId: string): Promise<void> => {
-      if (isClosed()) return;
+      if (cancelled()) return;
 
       const node = nodeMap.get(nodeId)!;
       const config = JSON.parse(node.config || '{}');
@@ -135,9 +154,16 @@ export class ChainExecutorService {
           let fullThinking = '';
 
           await new Promise<void>((resolve, reject) => {
-            this.ai.stream(request).subscribe({
+            if (cancelled()) { resolve(); return; }
+
+            let settled = false;
+            const settle = (fn: () => void) => {
+              if (!settled) { settled = true; cleanup(); fn(); }
+            };
+
+            const sub = this.ai.stream(request).subscribe({
               next: (chunk) => {
-                if (isClosed()) return;
+                if (cancelled()) { settle(() => resolve()); return; }
                 switch (chunk.type) {
                   case 'text_delta':
                     fullText += chunk.content;
@@ -148,13 +174,25 @@ export class ChainExecutorService {
                     send('node_thinking', { nodeId, content: chunk.content });
                     break;
                   case 'error':
-                    reject(new Error(chunk.content));
+                    settle(() => reject(new Error(chunk.content)));
                     break;
                 }
               },
-              complete: () => resolve(),
-              error: (err) => reject(err),
+              complete: () => settle(() => resolve()),
+              error: (err) => settle(() => reject(err)),
             });
+
+            // Abort signal listener — fires immediately when stop() is called
+            const onAbort = () => {
+              sub.unsubscribe();
+              settle(() => resolve());
+            };
+            signal.addEventListener('abort', onAbort);
+
+            const cleanup = () => {
+              signal.removeEventListener('abort', onAbort);
+              sub.unsubscribe();
+            };
           });
 
           nodeOutputs.set(nodeId, fullText);
@@ -188,7 +226,7 @@ export class ChainExecutorService {
 
     // Main execution loop: fire ready nodes in parallel
     while (ready.size > 0 || running.size > 0) {
-      if (isClosed()) return;
+      if (cancelled()) return;
 
       // Launch all ready nodes
       for (const nodeId of ready) {
@@ -205,7 +243,9 @@ export class ChainExecutorService {
       }
     }
 
-    if (!isClosed()) {
+    this.activeRuns.delete(chainId);
+
+    if (!cancelled()) {
       send('chain_done', { totalNodes: nodes.length });
     }
   }

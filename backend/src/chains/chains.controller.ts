@@ -61,10 +61,16 @@ export class ChainsController {
       }
     };
 
-    await this.executor.execute(chain.nodes, chain.edges, send, () => closed);
+    await this.executor.execute(id, chain.nodes, chain.edges, send, () => closed);
 
     if (!closed) {
       res.end();
     }
+  }
+
+  @Post(':id/stop')
+  stop(@Param('id') id: string) {
+    this.executor.stop(id);
+    return { ok: true };
   }
 }

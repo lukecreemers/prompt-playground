@@ -59,9 +59,18 @@ export function useChainExecution() {
 
   const stopChain = () => {
     const store = useStore.getState();
+
+    // Tell backend to abort the in-flight LLM calls immediately
+    if (activeChainId) {
+      fetch(`/api/chains/${activeChainId}/stop`, { method: 'POST' }).catch(() => {});
+    }
+
+    // Abort the SSE fetch connection
     store.chainAbortController?.abort();
-    store.setChainStatus('idle');
     store.setChainAbortController(null);
+
+    // Mark chain + running nodes as idle, keeping any partial output
+    store.stopChainExecution();
   };
 
   return { runChain, stopChain };

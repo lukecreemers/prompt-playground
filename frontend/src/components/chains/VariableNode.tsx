@@ -36,7 +36,7 @@ function VariableNodeComponent({ id, data }: { id: string; data: any }) {
           value={config.text}
           onChange={handleChange}
           placeholder="Enter text..."
-          className="w-full min-h-[60px] text-sm bg-background border border-border rounded p-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+          className="nodrag w-full min-h-[60px] text-sm bg-background border border-border rounded p-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
           rows={3}
         />
       </div>

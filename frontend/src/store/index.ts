@@ -157,6 +157,7 @@ interface AppState {
   setChainNodeDone: (nodeId: string, output: string) => void;
   setChainNodeError: (nodeId: string, error: string) => void;
   resetChainExecution: () => void;
+  stopChainExecution: () => void;
   setChainStatus: (status: 'idle' | 'running' | 'completed' | 'error') => void;
   setChainAbortController: (controller: AbortController | null) => void;
   setSelectedChainNodeId: (id: string | null) => void;
@@ -699,6 +700,10 @@ export const useStore = create<AppState>()(
 
     onChainConnect: (connection) => {
       set((s) => {
+        // Remove existing edge to same target handle (one input allowed)
+        s.chainEdges = s.chainEdges.filter(
+          (e) => !(e.target === connection.target && e.targetHandle === connection.targetHandle),
+        );
         s.chainEdges = addEdge(connection, s.chainEdges);
       });
     },
@@ -783,6 +788,17 @@ export const useStore = create<AppState>()(
     resetChainExecution: () => {
       set((s) => {
         s.chainNodeStates = {};
+        s.chainStatus = 'idle';
+      });
+    },
+
+    stopChainExecution: () => {
+      set((s) => {
+        for (const nodeId of Object.keys(s.chainNodeStates)) {
+          if (s.chainNodeStates[nodeId].status === 'running') {
+            s.chainNodeStates[nodeId].status = 'idle';
+          }
+        }
         s.chainStatus = 'idle';
       });
     },

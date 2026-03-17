@@ -17,15 +17,17 @@ export class AnthropicProvider implements LlmProvider {
 
   stream(request: LlmRequest): Observable<LlmChunk> {
     return new Observable<LlmChunk>((subscriber) => {
+      let sdkStream: ReturnType<typeof this.client.messages.stream> | null = null;
+
       const run = async () => {
         try {
           const params = this.buildParams(request);
-          const stream = this.client.messages.stream(params);
+          sdkStream = this.client.messages.stream(params);
 
           let fullText = '';
           let fullThinking = '';
 
-          stream.on('streamEvent' as any, (event: any) => {
+          sdkStream.on('streamEvent' as any, (event: any) => {
             if (event.type === 'content_block_delta') {
               const delta = event.delta;
               if (delta.type === 'text_delta') {
@@ -38,7 +40,7 @@ export class AnthropicProvider implements LlmProvider {
             }
           });
 
-          const finalMessage = await stream.finalMessage();
+          const finalMessage = await sdkStream.finalMessage();
           const usage = finalMessage.usage || {};
 
           subscriber.next({
@@ -57,6 +59,11 @@ export class AnthropicProvider implements LlmProvider {
       };
 
       run();
+
+      // Teardown: abort the SDK stream when unsubscribed
+      return () => {
+        sdkStream?.abort();
+      };
     });
   }
 

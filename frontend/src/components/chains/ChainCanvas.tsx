@@ -30,8 +30,10 @@ export function ChainCanvas() {
 
   // Spacebar tracking for pan mode
   useEffect(() => {
+    const isInput = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
+      if (e.code === 'Space' && !e.repeat && !isInput(e.target)) {
         e.preventDefault();
         setSpaceHeld(true);
       }
