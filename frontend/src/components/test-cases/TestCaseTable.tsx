@@ -87,7 +87,9 @@ function RowActions({ row }: { row: TestCase }) {
 export function TestCaseTable() {
   const testCases = useStore((s) => s.testCases);
   const selectedIds = useStore((s) => s.selectedTestCaseIds);
+  const activePrompt = useStore((s) => s.activePrompt);
   const detectedVars = useDetectedVariables();
+  const evalEnabled = activePrompt?.evalPrompt !== null && activePrompt?.evalPrompt !== undefined;
 
   const data = useMemo(() => Object.values(testCases), [testCases]);
 
@@ -126,15 +128,17 @@ export function TestCaseTable() {
       maxSize: 400,
     });
 
-    cols.push({
-      id: 'evalResult',
-      header: 'Eval',
-      cell: ({ row }) => (
-        <StreamingOutputCell testCaseId={row.original.id} field="evalResult" />
-      ),
-      size: 200,
-      maxSize: 300,
-    });
+    if (evalEnabled) {
+      cols.push({
+        id: 'evalResult',
+        header: 'Eval',
+        cell: ({ row }) => (
+          <StreamingOutputCell testCaseId={row.original.id} field="evalResult" />
+        ),
+        size: 200,
+        maxSize: 300,
+      });
+    }
 
     cols.push({
       id: 'status',
@@ -158,7 +162,7 @@ export function TestCaseTable() {
     });
 
     return cols;
-  }, [detectedVars]);
+  }, [detectedVars, evalEnabled]);
 
   const table = useReactTable({
     data,

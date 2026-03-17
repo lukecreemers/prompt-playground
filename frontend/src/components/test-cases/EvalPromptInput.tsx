@@ -51,7 +51,7 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
         existingVariables={availableVars}
         hasEditableVariables={false}
         minHeight="100px"
-        className="resize-y"
+        className="resize-y max-h-[300px]"
       />
     </div>
   );

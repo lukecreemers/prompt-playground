@@ -14,10 +14,12 @@ export function TestCasesTab() {
     );
   }
 
+  const evalEnabled = activePrompt.evalPrompt !== null && activePrompt.evalPrompt !== undefined;
+
   return (
     <div className="flex flex-col h-full surface-panel overflow-hidden">
       <TestCaseToolbar />
-      <EvalHarnessEditor />
+      {evalEnabled && <EvalHarnessEditor />}
       <div className="flex-1 overflow-auto">
         <TestCaseTable />
       </div>

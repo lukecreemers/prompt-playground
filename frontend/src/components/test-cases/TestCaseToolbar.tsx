@@ -1,16 +1,26 @@
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { CsvUploadButton } from './CsvUploadButton';
-import { Play, FlaskConical, Plus, Trash2 } from 'lucide-react';
+import { Play, FlaskConical, Plus, Trash2, MoreVertical } from 'lucide-react';
 import { createSSEStream } from '@/lib/sse';
 
 export function TestCaseToolbar() {
   const activePromptId = useStore((s) => s.activePromptId);
+  const activePrompt = useStore((s) => s.activePrompt);
   const selectedIds = useStore((s) => s.selectedTestCaseIds);
   const testCases = useStore((s) => s.testCases);
   const addTestCase = useStore((s) => s.addTestCase);
   const deleteAllTestCases = useStore((s) => s.deleteAllTestCases);
+  const updatePrompt = useStore((s) => s.updatePrompt);
+
+  const evalEnabled = activePrompt?.evalPrompt !== null && activePrompt?.evalPrompt !== undefined;
 
   const runBatch = (withEval: boolean, ids?: string[]) => {
     if (!activePromptId) return;
@@ -114,35 +124,39 @@ export function TestCaseToolbar() {
         {hasSelected ? `Run Selected (${selectedKeys.length})` : 'Run All'}
       </Button>
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 text-xs gap-1.5"
-        onClick={() => runBatch(true, hasSelected ? selectedKeys : allIds)}
-        disabled={allIds.length === 0}
-      >
-        <FlaskConical className="h-3 w-3" />
-        Run with Eval
-      </Button>
+      {evalEnabled && (
+        <>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => runBatch(true, hasSelected ? selectedKeys : allIds)}
+            disabled={allIds.length === 0}
+          >
+            <FlaskConical className="h-3 w-3" />
+            Run with Eval
+          </Button>
 
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-7 text-xs gap-1.5"
-        onClick={() => runEvalOnly(hasSelected ? selectedKeys : allIds)}
-        disabled={allIds.length === 0}
-      >
-        <FlaskConical className="h-3 w-3" />
-        {hasSelected ? `Eval Selected (${selectedKeys.length})` : 'Eval All'}
-      </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1.5"
+            onClick={() => runEvalOnly(hasSelected ? selectedKeys : allIds)}
+            disabled={allIds.length === 0}
+          >
+            <FlaskConical className="h-3 w-3" />
+            {hasSelected ? `Eval Selected (${selectedKeys.length})` : 'Eval All'}
+          </Button>
+        </>
+      )}
+
+      <div className="flex-1" />
 
       <CsvUploadButton />
 
       <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={addTestCase}>
         <Plus className="h-3 w-3" /> Add Row
       </Button>
-
-      <div className="flex-1" />
 
       <Separator orientation="vertical" className="h-5" />
 
@@ -155,6 +169,22 @@ export function TestCaseToolbar() {
       >
         <Trash2 className="h-3 w-3" /> Delete All
       </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => updatePrompt({ evalPrompt: evalEnabled ? null : '' })}
+          >
+            <FlaskConical className="h-4 w-4 mr-2" />
+            {evalEnabled ? 'Disable Eval' : 'Enable Eval'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
