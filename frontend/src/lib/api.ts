@@ -72,6 +72,15 @@ export const api = {
     request<any[]>(`/agents/${agentId}/variables`, { method: 'PUT', body: JSON.stringify({ variables }) }),
   syncAgentVariables: (agentId: string) => request<any>(`/agents/${agentId}/sync-variables`, { method: 'POST' }),
 
+  // Code Functions
+  getCodeFunctions: () => request<any[]>('/code-functions'),
+  getCodeFunction: (id: string) => request<any>(`/code-functions/${id}`),
+  createCodeFunction: (data: any) => request<any>('/code-functions', { method: 'POST', body: JSON.stringify(data) }),
+  updateCodeFunction: (id: string, data: any) => request<any>(`/code-functions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCodeFunction: (id: string) => request<void>(`/code-functions/${id}`, { method: 'DELETE' }),
+  testCodeFunction: (id: string, inputs: Record<string, string>) =>
+    request<{ outputs?: Record<string, string>; error?: string }>(`/code-functions/${id}/test`, { method: 'POST', body: JSON.stringify({ inputs }) }),
+
   // Chains
   getChains: () => request<any[]>('/chains'),
   getChain: (id: string) => request<any>(`/chains/${id}`),

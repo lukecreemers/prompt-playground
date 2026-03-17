@@ -7,6 +7,7 @@ import { PromptTesterTab } from "@/components/prompt-tester/PromptTesterTab";
 import { TestCasesTab } from "@/components/test-cases/TestCasesTab";
 import { AgentTesterTab } from "@/components/agent-tester/AgentTesterTab";
 import { ChainsPage } from "@/components/chains/ChainsPage";
+import { CodeFunctionsPage } from "@/components/code-functions/CodeFunctionsPage";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
@@ -26,12 +27,17 @@ function App() {
   const chains = useStore((s) => s.chains);
   const activeChainId = useStore((s) => s.activeChainId);
   const setActiveChain = useStore((s) => s.setActiveChain);
+  const loadCodeFunctions = useStore((s) => s.loadCodeFunctions);
+  const codeFunctions = useStore((s) => s.codeFunctions);
+  const activeCodeFunctionId = useStore((s) => s.activeCodeFunctionId);
+  const setActiveCodeFunction = useStore((s) => s.setActiveCodeFunction);
 
   useEffect(() => {
     loadPrompts();
     loadModels();
     loadAgents();
     loadChains();
+    loadCodeFunctions();
   }, []);
 
   // Auto-select first prompt if none active
@@ -54,6 +60,13 @@ function App() {
       setActiveChain(chains[0].id);
     }
   }, [activePage, chains, activeChainId]);
+
+  // Auto-select first code function when switching to code-functions page if none active
+  useEffect(() => {
+    if (activePage === 'code-functions' && codeFunctions.length > 0 && !activeCodeFunctionId) {
+      setActiveCodeFunction(codeFunctions[0].id);
+    }
+  }, [activePage, codeFunctions, activeCodeFunctionId]);
 
   return (
     <SidebarProvider>
@@ -85,7 +98,12 @@ function App() {
               <ChainsPage />
             </div>
           )}
-          {activePage !== "prompt-tester" && activePage !== "agent-tester" && activePage !== "chains" && (
+          {activePage === "code-functions" && (
+            <div className="absolute inset-0">
+              <CodeFunctionsPage />
+            </div>
+          )}
+          {activePage !== "prompt-tester" && activePage !== "agent-tester" && activePage !== "chains" && activePage !== "code-functions" && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-muted-foreground">Coming soon</p>
             </div>

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { AiService } from '../ai/ai.service';
 import { PromptsService } from '../prompts/prompts.service';
+import { CodeFunctionsService } from '../code-functions/code-functions.service';
+import { CodeExecutionService } from '../code-functions/code-execution.service';
 import { LlmRequest } from '../ai/interfaces/llm-provider.interface';
 import { ChainNode } from '../database/entities/chain-node.entity';
 import { ChainEdge } from '../database/entities/chain-edge.entity';
@@ -25,6 +27,8 @@ export class ChainExecutorService {
   constructor(
     private readonly ai: AiService,
     private readonly promptsService: PromptsService,
+    private readonly codeFunctionsService: CodeFunctionsService,
+    private readonly codeExecutionService: CodeExecutionService,
   ) {}
 
   stop(chainId: string): void {
@@ -101,6 +105,7 @@ export class ChainExecutorService {
     // Ready-fire execution
     const nodeInputs = new Map<string, Map<string, string>>(); // nodeId -> (handle -> value)
     const nodeOutputs = new Map<string, string>(); // nodeId -> output value
+    const nodeOutputMap = new Map<string, Record<string, string>>(); // nodeId -> per-handle outputs (for code nodes)
     const completed = new Set<string>();
     const running = new Map<string, Promise<void>>();
 
@@ -228,6 +233,20 @@ export class ChainExecutorService {
 
           // Store matched handle for propagation filtering
           (node as any)._matchedHandle = matchedHandle;
+        } else if (node.type === 'code') {
+          const codeFn = await this.codeFunctionsService.findOne(config.codeFunctionId);
+          const inputs = nodeInputs.get(nodeId)!;
+          const inputMap: Record<string, string> = {};
+          for (const [handle, value] of inputs) {
+            if (handle === 'trigger') continue;
+            inputMap[handle] = value;
+          }
+          const outputNames: string[] = JSON.parse(codeFn.outputs || '[]');
+          const result = await this.codeExecutionService.execute(codeFn.code, inputMap, outputNames);
+          const output = JSON.stringify(result);
+          nodeOutputs.set(nodeId, output);
+          nodeOutputMap.set(nodeId, result);
+          send('node_done', { nodeId, output, outputs: result });
         } else if (node.type === 'merge') {
           const inputs = nodeInputs.get(nodeId)!;
           let mergeOutput = '';
@@ -249,7 +268,12 @@ export class ChainExecutorService {
           // For conditional nodes, only propagate on the matched handle
           if (node.type === 'conditional' && edge.sourceHandle !== matchedHandle) continue;
 
-          nodeInputs.get(edge.targetNodeId)?.set(edge.targetHandle, output);
+          // For code nodes, propagate per-handle output values
+          const perHandleOutputs = nodeOutputMap.get(nodeId);
+          const propagatedValue = perHandleOutputs && edge.sourceHandle && edge.sourceHandle in perHandleOutputs
+            ? perHandleOutputs[edge.sourceHandle]
+            : output;
+          nodeInputs.get(edge.targetNodeId)?.set(edge.targetHandle, propagatedValue);
 
           // Check if target is now ready
           const targetNode = nodeMap.get(edge.targetNodeId)!;

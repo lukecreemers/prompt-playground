@@ -12,12 +12,14 @@ import { VariableNode } from './VariableNode';
 import { PromptNode } from './PromptNode';
 import { ConditionalNode } from './ConditionalNode';
 import { MergeNode } from './MergeNode';
+import { CodeNode } from './CodeNode';
 
 const nodeTypes = {
   variable: VariableNode,
   prompt: PromptNode,
   conditional: ConditionalNode,
   merge: MergeNode,
+  code: CodeNode,
 };
 
 export function ChainCanvas() {

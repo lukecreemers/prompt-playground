@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage, Chain, ChainDetail } from '../types';
+import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage, Chain, ChainDetail, CodeFunction } from '../types';
 import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import { api } from '../lib/api';
@@ -57,8 +57,17 @@ interface AppState {
   chainAbortController: AbortController | null;
   selectedChainNodeId: string | null;
 
+  // Code Functions
+  codeFunctions: CodeFunction[];
+  activeCodeFunctionId: string | null;
+  activeCodeFunction: CodeFunction | null;
+  codeFunctionTestInputs: Record<string, string>;
+  codeFunctionTestResult: { outputs: Record<string, string> } | null;
+  codeFunctionTestError: string | null;
+  codeFunctionTestStatus: 'idle' | 'running' | 'completed' | 'error';
+
   // Sidebar page
-  activePage: 'prompt-tester' | 'agent-tester' | 'chains' | 'benchmarks';
+  activePage: 'prompt-tester' | 'agent-tester' | 'chains' | 'code-functions' | 'benchmarks';
   // Sub-tab within prompt tester page
   activeSubTab: 'tester' | 'test-cases';
 
@@ -99,7 +108,7 @@ interface AppState {
   setAbortController: (controller: AbortController | null) => void;
 
   loadModels: () => Promise<void>;
-  setActivePage: (page: 'prompt-tester' | 'agent-tester' | 'chains' | 'benchmarks') => void;
+  setActivePage: (page: 'prompt-tester' | 'agent-tester' | 'chains' | 'code-functions' | 'benchmarks') => void;
   setActiveSubTab: (tab: 'tester' | 'test-cases') => void;
   syncVariables: () => Promise<void>;
 
@@ -135,6 +144,15 @@ interface AppState {
   setAgentGenerationIndex: (index: number) => void;
   clearAgentGenerations: () => void;
   acceptAgentResponse: () => Promise<void>;
+
+  // Code Function actions
+  loadCodeFunctions: () => Promise<void>;
+  setActiveCodeFunction: (id: string) => Promise<void>;
+  createCodeFunction: () => Promise<void>;
+  updateCodeFunction: (data: Partial<CodeFunction>) => Promise<void>;
+  deleteCodeFunction: (id: string) => Promise<void>;
+  setCodeFunctionTestInput: (key: string, value: string) => void;
+  runCodeFunctionTest: () => Promise<void>;
 
   // Chain actions
   loadChains: () => Promise<void>;
@@ -193,6 +211,13 @@ export const useStore = create<AppState>()(
     agentAbortController: null,
     agentGenerations: [],
     agentGenerationIndex: 0,
+    codeFunctions: [],
+    activeCodeFunctionId: null,
+    activeCodeFunction: null,
+    codeFunctionTestInputs: {},
+    codeFunctionTestResult: null,
+    codeFunctionTestError: null,
+    codeFunctionTestStatus: 'idle',
     chains: [],
     activeChainId: null,
     activeChain: null,
@@ -599,6 +624,86 @@ export const useStore = create<AppState>()(
       });
     },
 
+    // Code Function actions
+
+    loadCodeFunctions: async () => {
+      const codeFunctions = await api.getCodeFunctions();
+      set((s) => { s.codeFunctions = codeFunctions; });
+    },
+
+    setActiveCodeFunction: async (id: string) => {
+      const fn = await api.getCodeFunction(id);
+      set((s) => {
+        s.activeCodeFunctionId = id;
+        s.activeCodeFunction = fn;
+        s.codeFunctionTestInputs = {};
+        s.codeFunctionTestResult = null;
+        s.codeFunctionTestError = null;
+        s.codeFunctionTestStatus = 'idle';
+      });
+    },
+
+    createCodeFunction: async () => {
+      const fn = await api.createCodeFunction({ name: 'Untitled Function', code: '', inputs: '[]', outputs: '[]' });
+      set((s) => { s.codeFunctions.unshift(fn); });
+      await get().setActiveCodeFunction(fn.id);
+    },
+
+    updateCodeFunction: async (data: Partial<CodeFunction>) => {
+      const id = get().activeCodeFunctionId;
+      if (!id) return;
+      const updated = await api.updateCodeFunction(id, data);
+      set((s) => {
+        s.activeCodeFunction = updated;
+        const idx = s.codeFunctions.findIndex((f) => f.id === id);
+        if (idx >= 0) s.codeFunctions[idx] = updated;
+      });
+    },
+
+    deleteCodeFunction: async (id: string) => {
+      await api.deleteCodeFunction(id);
+      set((s) => {
+        s.codeFunctions = s.codeFunctions.filter((f) => f.id !== id);
+        if (s.activeCodeFunctionId === id) {
+          s.activeCodeFunctionId = null;
+          s.activeCodeFunction = null;
+        }
+      });
+    },
+
+    setCodeFunctionTestInput: (key, value) => {
+      set((s) => { s.codeFunctionTestInputs[key] = value; });
+    },
+
+    runCodeFunctionTest: async () => {
+      const id = get().activeCodeFunctionId;
+      if (!id) return;
+      set((s) => {
+        s.codeFunctionTestStatus = 'running';
+        s.codeFunctionTestResult = null;
+        s.codeFunctionTestError = null;
+      });
+      try {
+        const result = await api.testCodeFunction(id, get().codeFunctionTestInputs);
+        if (result.error) {
+          set((s) => {
+            s.codeFunctionTestStatus = 'error';
+            s.codeFunctionTestError = result.error!;
+          });
+        } else {
+          set((s) => {
+            s.codeFunctionTestStatus = 'completed';
+            s.codeFunctionTestResult = { outputs: result.outputs! };
+          });
+        }
+      } catch (err: any) {
+        set((s) => {
+          s.codeFunctionTestStatus = 'error';
+          s.codeFunctionTestError = err.message;
+        });
+      }
+    },
+
     // Chain actions
 
     loadChains: async () => {
@@ -714,6 +819,7 @@ export const useStore = create<AppState>()(
         type === 'variable' ? { text: '' }
         : type === 'conditional' ? { conditions: [] }
         : type === 'merge' ? { inputCount: 2 }
+        : type === 'code' ? { codeFunctionId: '' }
         : { promptId: '' };
       const newNode: Node = {
         id,

@@ -7,3 +7,4 @@ export { AgentVariable } from './agent-variable.entity';
 export { Chain } from './chain.entity';
 export { ChainNode } from './chain-node.entity';
 export { ChainEdge } from './chain-edge.entity';
+export { CodeFunction } from './code-function.entity';

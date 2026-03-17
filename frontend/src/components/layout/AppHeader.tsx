@@ -4,6 +4,7 @@ import { useChainExecution } from '@/hooks/useChainExecution';
 import { PromptNameEditor } from './PromptNameEditor';
 import { AgentNameEditor } from './AgentNameEditor';
 import { ChainNameEditor } from '@/components/chains/ChainNameEditor';
+import { CodeFunctionNameEditor } from './CodeFunctionNameEditor';
 import { ModelConfigBar } from './ModelConfigBar';
 import { RunButton } from './RunButton';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,7 @@ export function AppHeader() {
     <header className="border-b border-border bg-card/80 backdrop-blur-sm px-3 py-2.5 flex items-center gap-3">
       <SidebarTrigger />
       <Separator orientation="vertical" className="h-4" />
-      {activePage === 'agent-tester' ? <AgentNameEditor /> : activePage === 'chains' ? <ChainNameEditor /> : <PromptNameEditor />}
+      {activePage === 'code-functions' ? <CodeFunctionNameEditor /> : activePage === 'agent-tester' ? <AgentNameEditor /> : activePage === 'chains' ? <ChainNameEditor /> : <PromptNameEditor />}
       {activePage === 'prompt-tester' && (
         <div className="flex-1 flex justify-center">
           <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as any)}>
@@ -41,7 +42,9 @@ export function AppHeader() {
         </div>
       )}
       {activePage !== 'prompt-tester' && <div className="flex-1" />}
-      {activePage === 'chains' ? (
+      {activePage === 'code-functions' ? (
+        <div />
+      ) : activePage === 'chains' ? (
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleSave} className="gap-1.5">
             <Save className="h-3.5 w-3.5" /> Save

@@ -8,6 +8,7 @@ import { RunnerModule } from './runner/runner.module';
 import { AiModule } from './ai/ai.module';
 import { AgentsModule } from './agents/agents.module';
 import { ChainsModule } from './chains/chains.module';
+import { CodeFunctionsModule } from './code-functions/code-functions.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ChainsModule } from './chains/chains.module';
     AiModule,
     AgentsModule,
     ChainsModule,
+    CodeFunctionsModule,
   ],
 })
 export class AppModule {}

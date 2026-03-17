@@ -107,6 +107,20 @@ export interface ChainDetail extends Chain {
   edges: ChainEdgeData[];
 }
 
+export interface CodeFunction {
+  id: string;
+  name: string;
+  code: string;
+  inputs: string;
+  outputs: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChainNodeConfig_Code {
+  codeFunctionId: string;
+}
+
 export interface ChainNodeConfig_Variable {
   text: string;
 }

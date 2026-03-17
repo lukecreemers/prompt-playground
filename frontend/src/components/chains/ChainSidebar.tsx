@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, X } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, X, Code } from 'lucide-react';
 import { detectVariables } from '@/lib/interpolate';
 
 const NODE_CATEGORIES = [
@@ -17,6 +17,10 @@ const NODE_CATEGORIES = [
   {
     label: 'AI',
     items: [{ type: 'prompt', label: 'Prompt', icon: MessageSquare }],
+  },
+  {
+    label: 'Transform',
+    items: [{ type: 'code', label: 'Code', icon: Code }],
   },
   {
     label: 'Logic',
@@ -38,6 +42,7 @@ export function ChainSidebar() {
   const setSelectedNodeId = useStore((s) => s.setSelectedChainNodeId);
   const prompts = useStore((s) => s.prompts);
   const models = useStore((s) => s.models);
+  const codeFunctions = useStore((s) => s.codeFunctions);
 
   const selectedNode = useMemo(
     () => chainNodes.find((n) => n.id === selectedNodeId),
@@ -117,6 +122,7 @@ export function ChainSidebar() {
             ? selectedNode.type === 'variable' ? 'Variable Config'
             : selectedNode.type === 'conditional' ? 'Conditional Config'
             : selectedNode.type === 'merge' ? 'Merge Config'
+            : selectedNode.type === 'code' ? 'Code Config'
             : 'Prompt Config'
             : 'Nodes'}
         </span>
@@ -315,6 +321,58 @@ export function ChainSidebar() {
                   Add Condition
                 </Button>
               </div>
+            )}
+
+            {selectedNode.type === 'code' && (
+              <>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Function</Label>
+                  <Select
+                    value={config.codeFunctionId || ''}
+                    onValueChange={(v) => updateNodeConfig({ codeFunctionId: v })}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue placeholder="Select a function..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {codeFunctions.map((fn) => (
+                        <SelectItem key={fn.id} value={fn.id}>{fn.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {config.codeFunctionId && (() => {
+                  const fn = codeFunctions.find((f: any) => f.id === config.codeFunctionId);
+                  if (!fn) return null;
+                  const fnInputs: string[] = JSON.parse(fn.inputs || '[]');
+                  const fnOutputs: string[] = JSON.parse(fn.outputs || '[]');
+                  return (
+                    <>
+                      {fnInputs.length > 0 && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Inputs</Label>
+                          <div className="text-xs text-muted-foreground/70">
+                            {fnInputs.map((v: string) => (
+                              <span key={v} className="inline-block bg-blue-500/10 text-blue-500 rounded px-1.5 py-0.5 mr-1 mb-1 font-mono">{v}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {fnOutputs.length > 0 && (
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Outputs</Label>
+                          <div className="text-xs text-muted-foreground/70">
+                            {fnOutputs.map((v: string) => (
+                              <span key={v} className="inline-block bg-green-500/10 text-green-500 rounded px-1.5 py-0.5 mr-1 mb-1 font-mono">{v}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
             )}
 
             {selectedNode.type === 'merge' && (

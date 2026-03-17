@@ -8,12 +8,14 @@ import { ChainsService } from './chains.service';
 import { ChainExecutorService } from './chain-executor.service';
 import { AiModule } from '../ai/ai.module';
 import { PromptsModule } from '../prompts/prompts.module';
+import { CodeFunctionsModule } from '../code-functions/code-functions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Chain, ChainNode, ChainEdge]),
     AiModule,
     PromptsModule,
+    CodeFunctionsModule,
   ],
   controllers: [ChainsController],
   providers: [ChainsService, ChainExecutorService],
