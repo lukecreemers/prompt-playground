@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useStore } from "@/store";
 import { useDetectedVariables } from "@/hooks/useDetectedVariables";
 import {
@@ -16,9 +17,26 @@ export function VariableDrawer() {
   const testerVariables = useStore((s) => s.testerVariables);
   const setTesterVariable = useStore((s) => s.setTesterVariable);
   const saveTesterVariables = useStore((s) => s.saveTesterVariables);
+  const focusVariable = useStore((s) => s.focusVariable);
+  const setFocusVariable = useStore((s) => s.setFocusVariable);
   const detectedVars = useDetectedVariables();
 
   useAutoSave(testerVariables, saveTesterVariables, 1000);
+
+  useEffect(() => {
+    if (!drawerOpen || !focusVariable) return;
+    const timeout = setTimeout(() => {
+      const el = document.querySelector<HTMLTextAreaElement>(
+        `[data-variable-input="${focusVariable}"]`
+      );
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ block: 'nearest' });
+      }
+      setFocusVariable(null);
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [drawerOpen, focusVariable, setFocusVariable]);
 
   return (
     <Sheet
@@ -45,6 +63,7 @@ export function VariableDrawer() {
               >
                 <Label className="text-xs text-accent-foreground font-mono">{`{{${key}}}`}</Label>
                 <Textarea
+                  data-variable-input={key}
                   value={testerVariables[key] || ""}
                   onChange={(e) => setTesterVariable(key, e.target.value)}
                   placeholder={`Value for ${key}`}

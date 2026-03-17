@@ -12,6 +12,7 @@ interface AppState {
   // Variables (tester sidebar)
   testerVariables: Record<string, string>;
   drawerOpen: boolean;
+  focusVariable: string | null;
 
   // Test cases
   testCases: Record<string, TestCase>;
@@ -43,6 +44,7 @@ interface AppState {
   setTesterVariables: (vars: Record<string, string>) => void;
   saveTesterVariables: () => Promise<void>;
   setDrawerOpen: (open: boolean) => void;
+  setFocusVariable: (name: string | null) => void;
 
   loadTestCases: () => Promise<void>;
   addTestCase: () => Promise<void>;
@@ -78,6 +80,7 @@ export const useStore = create<AppState>()(
     activePrompt: null,
     testerVariables: {},
     drawerOpen: false,
+    focusVariable: null,
     testCases: {},
     selectedTestCaseIds: {},
     testerResponse: '',
@@ -162,6 +165,10 @@ export const useStore = create<AppState>()(
 
     setDrawerOpen: (open) => {
       set((s) => { s.drawerOpen = open; });
+    },
+
+    setFocusVariable: (name) => {
+      set((s) => { s.focusVariable = name; });
     },
 
     loadTestCases: async () => {

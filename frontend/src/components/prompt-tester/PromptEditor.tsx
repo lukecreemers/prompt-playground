@@ -1,10 +1,10 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useDetectedVariables } from '@/hooks/useDetectedVariables';
 import { Settings, FileText } from 'lucide-react';
 import { TokenUsage, ModelInfo } from '@/types';
+import { PromptBox } from '@/components/prompt-box/PromptBox';
 
 function calcCosts(usage: TokenUsage, model: ModelInfo) {
   const inputCost = (usage.input_tokens * model.inputTokenCost) / 1_000_000;
@@ -22,6 +22,8 @@ export function PromptEditor() {
   const updatePrompt = useStore((s) => s.updatePrompt);
   const syncVariables = useStore((s) => s.syncVariables);
   const setDrawerOpen = useStore((s) => s.setDrawerOpen);
+  const setFocusVariable = useStore((s) => s.setFocusVariable);
+  const testerVariables = useStore((s) => s.testerVariables);
   const testerUsage = useStore((s) => s.testerUsage);
   const testerStatus = useStore((s) => s.testerStatus);
   const models = useStore((s) => s.models);
@@ -34,11 +36,9 @@ export function PromptEditor() {
     const { inputCost } = calcCosts(testerUsage, model);
     return { tokens: testerUsage.input_tokens, cost: inputCost };
   }, [testerUsage, testerStatus, activePrompt, models]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [text, setText] = useState(activePrompt?.content ?? '');
 
-  // Sync from store when it changes externally (e.g. switching prompts)
   const prevContent = useRef(activePrompt?.content);
   useEffect(() => {
     if (activePrompt?.content !== prevContent.current) {
@@ -47,12 +47,21 @@ export function PromptEditor() {
     }
   }, [activePrompt?.content]);
 
+  const handleChange = useCallback((newText: string) => {
+    setText(newText);
+  }, []);
+
   const handleBlur = useCallback(async () => {
     if (text !== activePrompt?.content) {
       await updatePrompt({ content: text });
       await syncVariables();
     }
   }, [text, activePrompt?.content, updatePrompt, syncVariables]);
+
+  const handleEditVariable = useCallback((varName: string) => {
+    setFocusVariable(varName);
+    setDrawerOpen(true);
+  }, [setFocusVariable, setDrawerOpen]);
 
   if (!activePrompt) {
     return (
@@ -80,25 +89,19 @@ export function PromptEditor() {
           Variables ({detectedVars.length})
         </Button>
       </div>
-      <div className="relative flex-1">
-        <textarea
-          ref={textareaRef}
+      <div className="relative flex-1 min-h-[300px]">
+        <PromptBox
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={handleChange}
           onBlur={handleBlur}
           placeholder="Write your prompt here. Use {{variableName}} for variables..."
-          className="w-full h-full resize-none font-mono text-sm bg-muted/40 min-h-[300px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]"
+          existingVariables={detectedVars}
+          variableValues={testerVariables}
+          hasEditableVariables={true}
+          onEditVariable={handleEditVariable}
+          className="absolute inset-0"
         />
       </div>
-      {detectedVars.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {detectedVars.map((v) => (
-            <Badge key={v} variant="outline" className="bg-primary/10 text-accent-foreground border-primary/20 font-mono text-xs px-2 py-0.5">
-              {`{{${v}}}`}
-            </Badge>
-          ))}
-        </div>
-      )}
       {inputCostInfo && (
         <p className="text-xs text-muted-foreground mt-2">
           Input: {inputCostInfo.tokens.toLocaleString()} tokens · {formatCost(inputCostInfo.cost)}
