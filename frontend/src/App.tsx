@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { PromptTesterTab } from "@/components/prompt-tester/PromptTesterTab";
 import { TestCasesTab } from "@/components/test-cases/TestCasesTab";
 import { AgentTesterTab } from "@/components/agent-tester/AgentTesterTab";
+import { ChainsPage } from "@/components/chains/ChainsPage";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
@@ -21,11 +22,16 @@ function App() {
   const agents = useStore((s) => s.agents);
   const activeAgentId = useStore((s) => s.activeAgentId);
   const setActiveAgent = useStore((s) => s.setActiveAgent);
+  const loadChains = useStore((s) => s.loadChains);
+  const chains = useStore((s) => s.chains);
+  const activeChainId = useStore((s) => s.activeChainId);
+  const setActiveChain = useStore((s) => s.setActiveChain);
 
   useEffect(() => {
     loadPrompts();
     loadModels();
     loadAgents();
+    loadChains();
   }, []);
 
   // Auto-select first prompt if none active
@@ -41,6 +47,13 @@ function App() {
       setActiveAgent(agents[0].id);
     }
   }, [activePage, agents, activeAgentId]);
+
+  // Auto-select first chain when switching to chains page if none active
+  useEffect(() => {
+    if (activePage === 'chains' && chains.length > 0 && !activeChainId) {
+      setActiveChain(chains[0].id);
+    }
+  }, [activePage, chains, activeChainId]);
 
   return (
     <SidebarProvider>
@@ -67,7 +80,12 @@ function App() {
               <AgentTesterTab />
             </div>
           )}
-          {activePage !== "prompt-tester" && activePage !== "agent-tester" && (
+          {activePage === "chains" && (
+            <div className="absolute inset-0">
+              <ChainsPage />
+            </div>
+          )}
+          {activePage !== "prompt-tester" && activePage !== "agent-tester" && activePage !== "chains" && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-muted-foreground">Coming soon</p>
             </div>

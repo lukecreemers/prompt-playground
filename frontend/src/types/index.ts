@@ -75,3 +75,47 @@ export interface AgentMessage {
   orderIndex: number;
   createdAt: string;
 }
+
+export interface Chain {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChainNodeData {
+  id: string;
+  chainId: string;
+  type: string;
+  positionX: number;
+  positionY: number;
+  config: string;
+  createdAt: string;
+}
+
+export interface ChainEdgeData {
+  id: string;
+  chainId: string;
+  sourceNodeId: string;
+  sourceHandle: string;
+  targetNodeId: string;
+  targetHandle: string;
+}
+
+export interface ChainDetail extends Chain {
+  nodes: ChainNodeData[];
+  edges: ChainEdgeData[];
+}
+
+export interface ChainNodeConfig_Variable {
+  text: string;
+}
+
+export interface ChainNodeConfig_Prompt {
+  promptId: string;
+  modelName?: string;
+  temperature?: number;
+  maxTokens?: number;
+  thinkingEnabled?: number;
+  thinkingBudget?: number | null;
+}

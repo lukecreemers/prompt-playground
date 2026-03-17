@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage } from '../types';
+import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage, Chain, ChainDetail } from '../types';
+import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
+import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import { api } from '../lib/api';
 
 interface AppState {
@@ -44,8 +46,19 @@ interface AppState {
   agentGenerations: Array<{ response: string; thinking: string; usage: TokenUsage | null }>;
   agentGenerationIndex: number;
 
+  // Chains
+  chains: Chain[];
+  activeChainId: string | null;
+  activeChain: ChainDetail | null;
+  chainNodes: Node[];
+  chainEdges: Edge[];
+  chainNodeStates: Record<string, { status: string; output: string; thinking: string; error: string | null }>;
+  chainStatus: 'idle' | 'running' | 'completed' | 'error';
+  chainAbortController: AbortController | null;
+  selectedChainNodeId: string | null;
+
   // Sidebar page
-  activePage: 'prompt-tester' | 'agent-tester' | 'benchmarks';
+  activePage: 'prompt-tester' | 'agent-tester' | 'chains' | 'benchmarks';
   // Sub-tab within prompt tester page
   activeSubTab: 'tester' | 'test-cases';
 
@@ -86,7 +99,7 @@ interface AppState {
   setAbortController: (controller: AbortController | null) => void;
 
   loadModels: () => Promise<void>;
-  setActivePage: (page: 'prompt-tester' | 'agent-tester' | 'benchmarks') => void;
+  setActivePage: (page: 'prompt-tester' | 'agent-tester' | 'chains' | 'benchmarks') => void;
   setActiveSubTab: (tab: 'tester' | 'test-cases') => void;
   syncVariables: () => Promise<void>;
 
@@ -122,6 +135,31 @@ interface AppState {
   setAgentGenerationIndex: (index: number) => void;
   clearAgentGenerations: () => void;
   acceptAgentResponse: () => Promise<void>;
+
+  // Chain actions
+  loadChains: () => Promise<void>;
+  createChain: () => Promise<void>;
+  setActiveChain: (id: string) => Promise<void>;
+  updateChain: (data: Partial<Chain>) => Promise<void>;
+  deleteChain: (id: string) => Promise<void>;
+  saveChainGraph: () => Promise<void>;
+  setChainNodes: (nodes: Node[]) => void;
+  setChainEdges: (edges: Edge[]) => void;
+  onChainNodesChange: (changes: NodeChange[]) => void;
+  onChainEdgesChange: (changes: EdgeChange[]) => void;
+  onChainConnect: (connection: Connection) => void;
+  addChainNode: (type: string, position: { x: number; y: number }) => void;
+  updateChainNodeConfig: (nodeId: string, config: any) => void;
+  removeChainNode: (nodeId: string) => void;
+  setChainNodeStatus: (nodeId: string, status: string) => void;
+  appendChainNodeOutput: (nodeId: string, content: string) => void;
+  appendChainNodeThinking: (nodeId: string, content: string) => void;
+  setChainNodeDone: (nodeId: string, output: string) => void;
+  setChainNodeError: (nodeId: string, error: string) => void;
+  resetChainExecution: () => void;
+  setChainStatus: (status: 'idle' | 'running' | 'completed' | 'error') => void;
+  setChainAbortController: (controller: AbortController | null) => void;
+  setSelectedChainNodeId: (id: string | null) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -154,6 +192,15 @@ export const useStore = create<AppState>()(
     agentAbortController: null,
     agentGenerations: [],
     agentGenerationIndex: 0,
+    chains: [],
+    activeChainId: null,
+    activeChain: null,
+    chainNodes: [],
+    chainEdges: [],
+    chainNodeStates: {},
+    chainStatus: 'idle',
+    chainAbortController: null,
+    selectedChainNodeId: null,
     activePage: 'prompt-tester',
     activeSubTab: 'tester',
 
@@ -550,5 +597,198 @@ export const useStore = create<AppState>()(
         s.agentGenerationIndex = 0;
       });
     },
+
+    // Chain actions
+
+    loadChains: async () => {
+      const chains = await api.getChains();
+      set((s) => { s.chains = chains; });
+    },
+
+    createChain: async () => {
+      const chain = await api.createChain({ name: 'Untitled Chain' });
+      set((s) => { s.chains.unshift(chain); });
+      await get().setActiveChain(chain.id);
+    },
+
+    setActiveChain: async (id: string) => {
+      const chain = await api.getChain(id);
+      const nodes: Node[] = (chain.nodes || []).map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        position: { x: n.positionX, y: n.positionY },
+        data: { config: JSON.parse(n.config || '{}') },
+      }));
+      const edges: Edge[] = (chain.edges || []).map((e: any) => ({
+        id: e.id,
+        source: e.sourceNodeId,
+        sourceHandle: e.sourceHandle,
+        target: e.targetNodeId,
+        targetHandle: e.targetHandle,
+      }));
+
+      set((s) => {
+        s.activeChainId = id;
+        s.activeChain = chain;
+        s.chainNodes = nodes;
+        s.chainEdges = edges;
+        s.chainNodeStates = {};
+        s.chainStatus = 'idle';
+      });
+    },
+
+    updateChain: async (data: Partial<Chain>) => {
+      const id = get().activeChainId;
+      if (!id) return;
+      const updated = await api.updateChain(id, data);
+      set((s) => {
+        s.activeChain = { ...s.activeChain!, ...updated };
+        const idx = s.chains.findIndex((c) => c.id === id);
+        if (idx >= 0) s.chains[idx] = { ...s.chains[idx], ...updated };
+      });
+    },
+
+    deleteChain: async (id: string) => {
+      await api.deleteChain(id);
+      set((s) => {
+        s.chains = s.chains.filter((c) => c.id !== id);
+        if (s.activeChainId === id) {
+          s.activeChainId = null;
+          s.activeChain = null;
+          s.chainNodes = [];
+          s.chainEdges = [];
+          s.chainNodeStates = {};
+        }
+      });
+    },
+
+    saveChainGraph: async () => {
+      const id = get().activeChainId;
+      if (!id) return;
+      const nodes = get().chainNodes.map((n) => ({
+        id: n.id,
+        type: n.type!,
+        positionX: n.position.x,
+        positionY: n.position.y,
+        config: JSON.stringify((n.data as any).config || {}),
+      }));
+      const edges = get().chainEdges.map((e) => ({
+        id: e.id,
+        sourceNodeId: e.source,
+        sourceHandle: e.sourceHandle || 'output',
+        targetNodeId: e.target,
+        targetHandle: e.targetHandle || 'input',
+      }));
+      await api.saveChainGraph(id, { nodes, edges });
+    },
+
+    setChainNodes: (nodes) => { set((s) => { s.chainNodes = nodes; }); },
+    setChainEdges: (edges) => { set((s) => { s.chainEdges = edges; }); },
+
+    onChainNodesChange: (changes) => {
+      set((s) => {
+        s.chainNodes = applyNodeChanges(changes, s.chainNodes) as Node[];
+      });
+    },
+
+    onChainEdgesChange: (changes) => {
+      set((s) => {
+        s.chainEdges = applyEdgeChanges(changes, s.chainEdges) as Edge[];
+      });
+    },
+
+    onChainConnect: (connection) => {
+      set((s) => {
+        s.chainEdges = addEdge(connection, s.chainEdges);
+      });
+    },
+
+    addChainNode: (type, position) => {
+      const id = crypto.randomUUID();
+      const defaultConfig = type === 'variable' ? { text: '' } : { promptId: '' };
+      const newNode: Node = {
+        id,
+        type,
+        position,
+        data: { config: defaultConfig },
+      };
+      set((s) => { s.chainNodes.push(newNode); });
+    },
+
+    updateChainNodeConfig: (nodeId, config) => {
+      set((s) => {
+        const node = s.chainNodes.find((n) => n.id === nodeId);
+        if (node) {
+          (node.data as any).config = config;
+        }
+      });
+    },
+
+    removeChainNode: (nodeId) => {
+      set((s) => {
+        s.chainNodes = s.chainNodes.filter((n) => n.id !== nodeId);
+        s.chainEdges = s.chainEdges.filter((e) => e.source !== nodeId && e.target !== nodeId);
+      });
+    },
+
+    setChainNodeStatus: (nodeId, status) => {
+      set((s) => {
+        if (!s.chainNodeStates[nodeId]) {
+          s.chainNodeStates[nodeId] = { status: 'idle', output: '', thinking: '', error: null };
+        }
+        s.chainNodeStates[nodeId].status = status;
+      });
+    },
+
+    appendChainNodeOutput: (nodeId, content) => {
+      set((s) => {
+        if (!s.chainNodeStates[nodeId]) {
+          s.chainNodeStates[nodeId] = { status: 'running', output: '', thinking: '', error: null };
+        }
+        s.chainNodeStates[nodeId].output += content;
+      });
+    },
+
+    appendChainNodeThinking: (nodeId, content) => {
+      set((s) => {
+        if (!s.chainNodeStates[nodeId]) {
+          s.chainNodeStates[nodeId] = { status: 'running', output: '', thinking: '', error: null };
+        }
+        s.chainNodeStates[nodeId].thinking += content;
+      });
+    },
+
+    setChainNodeDone: (nodeId, output) => {
+      set((s) => {
+        if (!s.chainNodeStates[nodeId]) {
+          s.chainNodeStates[nodeId] = { status: 'completed', output, thinking: '', error: null };
+        } else {
+          s.chainNodeStates[nodeId].status = 'completed';
+          s.chainNodeStates[nodeId].output = output;
+        }
+      });
+    },
+
+    setChainNodeError: (nodeId, error) => {
+      set((s) => {
+        if (!s.chainNodeStates[nodeId]) {
+          s.chainNodeStates[nodeId] = { status: 'error', output: '', thinking: '', error };
+        } else {
+          s.chainNodeStates[nodeId].status = 'error';
+          s.chainNodeStates[nodeId].error = error;
+        }
+      });
+    },
+
+    resetChainExecution: () => {
+      set((s) => {
+        s.chainNodeStates = {};
+        s.chainStatus = 'idle';
+      });
+    },
+
+    setChainStatus: (status) => { set((s) => { s.chainStatus = status; }); },
+    setChainAbortController: (controller) => { set((s) => { s.chainAbortController = controller; }); },
+    setSelectedChainNodeId: (id) => { set((s) => { s.selectedChainNodeId = id; }); },
   })),
 );

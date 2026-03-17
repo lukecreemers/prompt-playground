@@ -1,4 +1,4 @@
-import { FlaskConical, Bot, BarChart3 } from "lucide-react"
+import { FlaskConical, Bot, BarChart3, Workflow } from "lucide-react"
 import { useStore } from "@/store"
 import { ThemeToggle } from "./ThemeToggle"
 import {
@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-type PageValue = 'prompt-tester' | 'agent-tester' | 'benchmarks'
+type PageValue = 'prompt-tester' | 'agent-tester' | 'chains' | 'benchmarks'
 
 const navSections = [
   {
@@ -21,6 +21,7 @@ const navSections = [
     items: [
       { title: "Prompt Tester", icon: FlaskConical, value: "prompt-tester" as PageValue },
       { title: "Agent Tester", icon: Bot, value: "agent-tester" as PageValue },
+      { title: "Chains", icon: Workflow, value: "chains" as PageValue },
     ],
   },
   {

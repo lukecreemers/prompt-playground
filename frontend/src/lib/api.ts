@@ -71,4 +71,13 @@ export const api = {
   upsertAgentVariables: (agentId: string, variables: { key: string; value: string }[]) =>
     request<any[]>(`/agents/${agentId}/variables`, { method: 'PUT', body: JSON.stringify({ variables }) }),
   syncAgentVariables: (agentId: string) => request<any>(`/agents/${agentId}/sync-variables`, { method: 'POST' }),
+
+  // Chains
+  getChains: () => request<any[]>('/chains'),
+  getChain: (id: string) => request<any>(`/chains/${id}`),
+  createChain: (data: any) => request<any>('/chains', { method: 'POST', body: JSON.stringify(data) }),
+  updateChain: (id: string, data: any) => request<any>(`/chains/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteChain: (id: string) => request<void>(`/chains/${id}`, { method: 'DELETE' }),
+  saveChainGraph: (id: string, data: { nodes: any[]; edges: any[] }) =>
+    request<any>(`/chains/${id}/graph`, { method: 'PUT', body: JSON.stringify(data) }),
 };
