@@ -28,7 +28,7 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
   const activePrompt = useStore((s) => s.activePrompt);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const overlayInnerRef = useRef<HTMLDivElement>(null);
 
   // Local state -- typing never hits the network
   const [text, setText] = useState(value);
@@ -55,10 +55,21 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
     return availableVars.filter((v) => v.toLowerCase().startsWith(partial));
   }, [ac, availableVars]);
 
+  useEffect(() => {
+    const ta = textareaRef.current;
+    const inner = overlayInnerRef.current;
+    if (!ta || !inner) return;
+    const sync = () => { inner.style.width = ta.clientWidth + 'px'; };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(ta);
+    return () => ro.disconnect();
+  }, []);
+
   const syncScroll = useCallback(() => {
-    if (overlayRef.current && textareaRef.current) {
-      overlayRef.current.scrollTop = textareaRef.current.scrollTop;
-      overlayRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    if (overlayInnerRef.current && textareaRef.current) {
+      const ta = textareaRef.current;
+      overlayInnerRef.current.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`;
     }
   }, []);
 
@@ -140,26 +151,22 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
   const dropdownPos = ac && suggestions.length > 0 ? getDropdownPosition() : null;
 
   return (
-    <div className={cn('relative', className)}>
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyUp={onKeyUp}
-          onKeyDown={onKeyDown}
-          onScroll={syncScroll}
-          onBlur={handleBlur}
-          onClick={onKeyUp}
-          placeholder=""
-          className="relative z-[2] w-full font-mono text-sm text-transparent caret-foreground selection:bg-primary/20 bg-transparent resize-none min-h-[100px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]"
-        />
+    <div className={cn("eval-textarea-wrap relative", className)}>
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyUp={onKeyUp}
+        onKeyDown={onKeyDown}
+        onScroll={syncScroll}
+        onBlur={handleBlur}
+        onClick={onKeyUp}
+        placeholder=""
+        className="eval-textarea block relative z-[2] w-full font-mono text-sm text-transparent caret-foreground selection:bg-primary/20 bg-transparent resize-y min-h-[100px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]"
+      />
 
-        <div
-          ref={overlayRef}
-          aria-hidden
-          className="absolute inset-0 z-[1] overflow-hidden pointer-events-none font-mono text-sm p-3 whitespace-pre-wrap break-words leading-[1.5]"
-        >
+      <div aria-hidden className="absolute inset-px z-[1] overflow-hidden pointer-events-none rounded-md">
+        <div ref={overlayInnerRef} className="font-mono text-sm p-3 whitespace-pre-wrap break-words leading-[1.5]">
           {text ? segments.map((seg, i) =>
             seg.isVariable ? (
               <span key={i} className="text-primary">{seg.text}</span>

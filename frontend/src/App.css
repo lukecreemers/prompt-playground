@@ -160,6 +160,32 @@ body {
   letter-spacing: 0.08em;
 }
 
+/* Resize grip for eval prompt textarea */
+.eval-textarea::-webkit-resizer {
+  display: none;
+}
+.eval-textarea-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 0 0 0.5rem 0;
+  background:
+    linear-gradient(135deg, transparent 50%, hsl(220 10% 72%) 50%, hsl(220 10% 72%) 55%, transparent 55%),
+    linear-gradient(135deg, transparent 65%, hsl(220 10% 72%) 65%, hsl(220 10% 72%) 70%, transparent 70%),
+    linear-gradient(135deg, transparent 80%, hsl(220 10% 72%) 80%, hsl(220 10% 72%) 85%, transparent 85%);
+}
+.dark .eval-textarea-wrap::after {
+  background:
+    linear-gradient(135deg, transparent 50%, hsl(225 6% 38%) 50%, hsl(225 6% 38%) 55%, transparent 55%),
+    linear-gradient(135deg, transparent 65%, hsl(225 6% 38%) 65%, hsl(225 6% 38%) 70%, transparent 70%),
+    linear-gradient(135deg, transparent 80%, hsl(225 6% 38%) 80%, hsl(225 6% 38%) 85%, transparent 85%);
+}
+
 /* Focus ring */
 *:focus-visible {
   outline: none;
