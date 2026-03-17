@@ -6,6 +6,7 @@ import { VariablesModule } from './variables/variables.module';
 import { TestCasesModule } from './test-cases/test-cases.module';
 import { RunnerModule } from './runner/runner.module';
 import { AiModule } from './ai/ai.module';
+import { AgentsModule } from './agents/agents.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AiModule } from './ai/ai.module';
     TestCasesModule,
     RunnerModule,
     AiModule,
+    AgentsModule,
   ],
 })
 export class AppModule {}

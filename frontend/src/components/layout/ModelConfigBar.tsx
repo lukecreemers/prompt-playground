@@ -10,17 +10,24 @@ import { Button } from '@/components/ui/button';
 import { Settings2 } from 'lucide-react';
 
 export function ModelConfigBar() {
+  const activePage = useStore((s) => s.activePage);
   const activePrompt = useStore((s) => s.activePrompt);
+  const activeAgent = useStore((s) => s.activeAgent);
   const models = useStore((s) => s.models);
   const updatePrompt = useStore((s) => s.updatePrompt);
+  const updateAgent = useStore((s) => s.updateAgent);
 
-  if (!activePrompt) return null;
+  const isAgent = activePage === 'agent-tester';
+  const config = isAgent ? activeAgent : activePrompt;
+  const update = isAgent ? updateAgent : updatePrompt;
+
+  if (!config) return null;
 
   return (
     <div className="flex items-center gap-2">
       <Select
-        value={activePrompt.modelName}
-        onValueChange={(v) => updatePrompt({ modelName: v })}
+        value={config.modelName}
+        onValueChange={(v) => update({ modelName: v })}
       >
         <SelectTrigger className="h-8 w-44 text-sm">
           <SelectValue />
@@ -56,14 +63,14 @@ export function ModelConfigBar() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label className="text-xs text-muted-foreground">Temperature</Label>
-                <span className="text-xs tabular-nums text-muted-foreground">{activePrompt.temperature}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">{config.temperature}</span>
               </div>
               <Slider
                 min={0}
                 max={2}
                 step={0.1}
-                value={[activePrompt.temperature]}
-                onValueChange={([v]) => updatePrompt({ temperature: v })}
+                value={[config.temperature]}
+                onValueChange={([v]) => update({ temperature: v })}
               />
             </div>
 
@@ -71,8 +78,8 @@ export function ModelConfigBar() {
               <Label className="text-xs text-muted-foreground">Max Tokens</Label>
               <Input
                 type="number"
-                value={activePrompt.maxTokens}
-                onChange={(e) => updatePrompt({ maxTokens: parseInt(e.target.value) || 4096 })}
+                value={config.maxTokens}
+                onChange={(e) => update({ maxTokens: parseInt(e.target.value) || 4096 })}
                 className="h-7 text-xs"
               />
             </div>
@@ -80,38 +87,40 @@ export function ModelConfigBar() {
             <div className="flex items-center justify-between py-0.5">
               <Label className="text-xs text-muted-foreground">Extended Thinking</Label>
               <Switch
-                checked={!!activePrompt.thinkingEnabled}
-                onCheckedChange={(v) => updatePrompt({
+                checked={!!config.thinkingEnabled}
+                onCheckedChange={(v) => update({
                   thinkingEnabled: v ? 1 : 0,
-                  temperature: v ? 1 : activePrompt.temperature,
+                  temperature: v ? 1 : config.temperature,
                 })}
               />
             </div>
 
-            {!!activePrompt.thinkingEnabled && (
+            {!!config.thinkingEnabled && (
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Thinking Budget</Label>
                 <Input
                   type="number"
-                  value={activePrompt.thinkingBudget || ''}
+                  value={config.thinkingBudget || ''}
                   placeholder="Auto"
-                  onChange={(e) => updatePrompt({ thinkingBudget: parseInt(e.target.value) || null })}
+                  onChange={(e) => update({ thinkingBudget: parseInt(e.target.value) || null })}
                   className="h-7 text-xs"
                 />
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Concurrency Limit</Label>
-              <Input
-                type="number"
-                min="1"
-                max="20"
-                value={activePrompt.concurrencyLimit}
-                onChange={(e) => updatePrompt({ concurrencyLimit: parseInt(e.target.value) || 5 })}
-                className="h-7 text-xs"
-              />
-            </div>
+            {!isAgent && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Concurrency Limit</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={(config as any).concurrencyLimit}
+                  onChange={(e) => update({ concurrencyLimit: parseInt(e.target.value) || 5 } as any)}
+                  className="h-7 text-xs"
+                />
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>

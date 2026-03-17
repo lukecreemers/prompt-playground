@@ -20,5 +20,6 @@ import { VariablesModule } from '../variables/variables.module';
   ],
   controllers: [RunnerController],
   providers: [RunnerService, BatchRunnerService, EvalRunnerService],
+  exports: [RunnerService],
 })
 export class RunnerModule {}

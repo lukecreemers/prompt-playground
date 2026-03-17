@@ -12,6 +12,8 @@ export interface LlmRequest {
   temperature: number;
   maxTokens: number;
   thinking?: { enabled: boolean; budgetTokens?: number };
+  system?: string;
+  messages?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
 export interface LlmProvider {

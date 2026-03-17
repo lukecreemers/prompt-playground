@@ -4,15 +4,76 @@ import { Play, Square } from 'lucide-react';
 import { createSSEStream } from '@/lib/sse';
 
 export function RunButton() {
+  const activePage = useStore((s) => s.activePage);
   const activePromptId = useStore((s) => s.activePromptId);
+  const activeAgentId = useStore((s) => s.activeAgentId);
   const activeSubTab = useStore((s) => s.activeSubTab);
   const testerStatus = useStore((s) => s.testerStatus);
+  const agentStatus = useStore((s) => s.agentStatus);
   const abortController = useStore((s) => s.abortController);
+  const agentAbortController = useStore((s) => s.agentAbortController);
   const saveTesterVariables = useStore((s) => s.saveTesterVariables);
+  const saveAgentVariables = useStore((s) => s.saveAgentVariables);
   const testCases = useStore((s) => s.testCases);
   const selectedTestCaseIds = useStore((s) => s.selectedTestCaseIds);
 
-  const isTestCases = activeSubTab === 'test-cases';
+  const isAgent = activePage === 'agent-tester';
+  const isTestCases = !isAgent && activeSubTab === 'test-cases';
+  const currentStatus = isAgent ? agentStatus : testerStatus;
+  const currentAbort = isAgent ? agentAbortController : abortController;
+
+  const handleRunAgent = async () => {
+    if (!activeAgentId) return;
+
+    await saveAgentVariables();
+
+    const store = useStore.getState();
+    store.setAgentResponse('');
+    store.setAgentThinking('');
+    store.setAgentUsage(null);
+    store.setAgentStatus('running');
+
+    const controller = new AbortController();
+    store.setAgentAbortController(controller);
+
+    createSSEStream(
+      `/api/agents/${activeAgentId}/run`,
+      {},
+      {
+        onEvent: (event, data) => {
+          const s = useStore.getState();
+          switch (event) {
+            case 'text':
+              s.appendAgentResponse(data.content);
+              break;
+            case 'thinking':
+              s.appendAgentThinking(data.content);
+              break;
+            case 'done':
+              if (data.usage) s.setAgentUsage(data.usage);
+              s.setAgentStatus('completed');
+              s.addAgentGeneration({
+                response: data.fullText || s.agentResponse,
+                thinking: s.agentThinking,
+                usage: data.usage || null,
+              });
+              break;
+            case 'error':
+              s.setAgentStatus('error');
+              s.appendAgentResponse(`\n\nError: ${data.message}`);
+              break;
+          }
+        },
+        onError: () => {
+          useStore.getState().setAgentStatus('error');
+        },
+        onClose: () => {
+          useStore.getState().setAgentAbortController(null);
+        },
+      },
+      controller.signal,
+    );
+  };
 
   const handleRunTester = async () => {
     if (!activePromptId) return;
@@ -110,7 +171,9 @@ export function RunButton() {
   };
 
   const handleRun = () => {
-    if (isTestCases) {
+    if (isAgent) {
+      handleRunAgent();
+    } else if (isTestCases) {
       handleRunTestCases();
     } else {
       handleRunTester();
@@ -118,9 +181,15 @@ export function RunButton() {
   };
 
   const handleStop = () => {
-    abortController?.abort();
-    useStore.getState().setTesterStatus('idle');
-    useStore.getState().setAbortController(null);
+    if (isAgent) {
+      agentAbortController?.abort();
+      useStore.getState().setAgentStatus('idle');
+      useStore.getState().setAgentAbortController(null);
+    } else {
+      abortController?.abort();
+      useStore.getState().setTesterStatus('idle');
+      useStore.getState().setAbortController(null);
+    }
   };
 
   // Compute label and disabled state
@@ -129,14 +198,14 @@ export function RunButton() {
   const hasSelected = selectedKeys.length > 0;
 
   let label = 'Run';
-  let isDisabled = !activePromptId;
+  let isDisabled = isAgent ? !activeAgentId : !activePromptId;
 
   if (isTestCases) {
     label = hasSelected ? `Run Selected (${selectedKeys.length})` : 'Run All';
     isDisabled = !activePromptId || allIds.length === 0;
   }
 
-  if (testerStatus === 'running') {
+  if (currentStatus === 'running') {
     return (
       <Button variant="destructive" size="sm" onClick={handleStop} className="gap-1.5">
         <Square className="h-3.5 w-3.5 animate-pulse" /> Stop

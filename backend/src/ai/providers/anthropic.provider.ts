@@ -72,8 +72,22 @@ export class AnthropicProvider implements LlmProvider {
     const params: any = {
       model: request.model,
       max_tokens: request.maxTokens,
-      messages: [{ role: 'user' as const, content: request.prompt }],
     };
+
+    // Use multi-turn messages if provided, otherwise wrap single prompt
+    if (request.messages && request.messages.length > 0) {
+      params.messages = request.messages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
+    } else {
+      params.messages = [{ role: 'user' as const, content: request.prompt }];
+    }
+
+    // Set system prompt if provided
+    if (request.system) {
+      params.system = request.system;
+    }
 
     if (request.thinking?.enabled) {
       params.temperature = 1;

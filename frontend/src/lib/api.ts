@@ -47,4 +47,26 @@ export const api = {
 
   // Models
   getModels: () => request<any[]>('/models'),
+
+  // Agents
+  getAgents: () => request<any[]>('/agents'),
+  getAgent: (id: string) => request<any>(`/agents/${id}`),
+  createAgent: (data: any) => request<any>('/agents', { method: 'POST', body: JSON.stringify(data) }),
+  updateAgent: (id: string, data: any) => request<any>(`/agents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteAgent: (id: string) => request<void>(`/agents/${id}`, { method: 'DELETE' }),
+
+  // Agent Messages
+  getAgentMessages: (agentId: string) => request<any[]>(`/agents/${agentId}/messages`),
+  addAgentMessagePair: (agentId: string, assistantContent?: string) =>
+    request<any[]>(`/agents/${agentId}/messages`, { method: 'POST', body: JSON.stringify({ assistantContent }) }),
+  updateAgentMessage: (msgId: string, content: string) =>
+    request<any>(`/agent-messages/${msgId}`, { method: 'PATCH', body: JSON.stringify({ content }) }),
+  deleteAgentMessage: (msgId: string) =>
+    request<void>(`/agent-messages/${msgId}`, { method: 'DELETE' }),
+
+  // Agent Variables
+  getAgentVariables: (agentId: string) => request<any[]>(`/agents/${agentId}/variables`),
+  upsertAgentVariables: (agentId: string, variables: { key: string; value: string }[]) =>
+    request<any[]>(`/agents/${agentId}/variables`, { method: 'PUT', body: JSON.stringify({ variables }) }),
+  syncAgentVariables: (agentId: string) => request<any>(`/agents/${agentId}/sync-variables`, { method: 'POST' }),
 };

@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { PromptTesterTab } from "@/components/prompt-tester/PromptTesterTab";
 import { TestCasesTab } from "@/components/test-cases/TestCasesTab";
+import { AgentTesterTab } from "@/components/agent-tester/AgentTesterTab";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
@@ -13,13 +14,18 @@ function App() {
   const activeSubTab = useStore((s) => s.activeSubTab);
   const loadPrompts = useStore((s) => s.loadPrompts);
   const loadModels = useStore((s) => s.loadModels);
+  const loadAgents = useStore((s) => s.loadAgents);
   const prompts = useStore((s) => s.prompts);
   const activePromptId = useStore((s) => s.activePromptId);
   const setActivePrompt = useStore((s) => s.setActivePrompt);
+  const agents = useStore((s) => s.agents);
+  const activeAgentId = useStore((s) => s.activeAgentId);
+  const setActiveAgent = useStore((s) => s.setActiveAgent);
 
   useEffect(() => {
     loadPrompts();
     loadModels();
+    loadAgents();
   }, []);
 
   // Auto-select first prompt if none active
@@ -28,6 +34,13 @@ function App() {
       setActivePrompt(prompts[0].id);
     }
   }, [prompts, activePromptId]);
+
+  // Auto-select first agent when switching to agent page if none active
+  useEffect(() => {
+    if (activePage === 'agent-tester' && agents.length > 0 && !activeAgentId) {
+      setActiveAgent(agents[0].id);
+    }
+  }, [activePage, agents, activeAgentId]);
 
   return (
     <SidebarProvider>
@@ -49,7 +62,12 @@ function App() {
               </div>
             </>
           )}
-          {activePage !== "prompt-tester" && (
+          {activePage === "agent-tester" && (
+            <div className="absolute inset-0 p-3">
+              <AgentTesterTab />
+            </div>
+          )}
+          {activePage !== "prompt-tester" && activePage !== "agent-tester" && (
             <div className="absolute inset-0 flex items-center justify-center">
               <p className="text-muted-foreground">Coming soon</p>
             </div>

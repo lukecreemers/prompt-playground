@@ -53,3 +53,25 @@ export interface TokenUsage {
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 }
+
+export interface Agent {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  modelName: string;
+  temperature: number;
+  maxTokens: number;
+  thinkingEnabled: number;
+  thinkingBudget: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentMessage {
+  id: string;
+  agentId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  orderIndex: number;
+  createdAt: string;
+}

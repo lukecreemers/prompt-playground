@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Prompt, TestCase, ModelInfo, TokenUsage } from '../types';
+import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage } from '../types';
 import { api } from '../lib/api';
 
 interface AppState {
@@ -28,6 +28,22 @@ interface AppState {
   // Models
   models: ModelInfo[];
 
+  // Agents
+  agents: Agent[];
+  activeAgentId: string | null;
+  activeAgent: Agent | null;
+  agentMessages: AgentMessage[];
+  agentVariables: Record<string, string>;
+  agentDrawerOpen: boolean;
+  agentFocusVariable: string | null;
+  agentResponse: string;
+  agentThinking: string;
+  agentStatus: 'idle' | 'running' | 'completed' | 'error';
+  agentUsage: TokenUsage | null;
+  agentAbortController: AbortController | null;
+  agentGenerations: Array<{ response: string; thinking: string; usage: TokenUsage | null }>;
+  agentGenerationIndex: number;
+
   // Sidebar page
   activePage: 'prompt-tester' | 'agent-tester' | 'benchmarks';
   // Sub-tab within prompt tester page
@@ -52,6 +68,8 @@ interface AppState {
   deleteTestCase: (id: string) => Promise<void>;
   deleteAllTestCases: () => Promise<void>;
   toggleTestCaseSelection: (id: string) => void;
+  selectTestCase: (id: string) => void;
+  deselectTestCase: (id: string) => void;
   selectAllTestCases: () => void;
   deselectAllTestCases: () => void;
   setTestCaseOutput: (id: string, field: 'output' | 'thinking' | 'evalResult', value: string) => void;
@@ -71,6 +89,37 @@ interface AppState {
   setActivePage: (page: 'prompt-tester' | 'agent-tester' | 'benchmarks') => void;
   setActiveSubTab: (tab: 'tester' | 'test-cases') => void;
   syncVariables: () => Promise<void>;
+
+  // Agent actions
+  loadAgents: () => Promise<void>;
+  setActiveAgent: (id: string) => Promise<void>;
+  createAgent: () => Promise<void>;
+  updateAgent: (data: Partial<Agent>) => Promise<void>;
+  deleteAgent: (id: string) => Promise<void>;
+
+  loadAgentMessages: () => Promise<void>;
+  addAgentMessagePair: (assistantContent?: string) => Promise<void>;
+  updateAgentMessage: (msgId: string, content: string) => Promise<void>;
+  deleteAgentMessage: (msgId: string) => Promise<void>;
+
+  setAgentVariable: (key: string, value: string) => void;
+  saveAgentVariables: () => Promise<void>;
+  syncAgentVariables: () => Promise<void>;
+  setAgentDrawerOpen: (open: boolean) => void;
+  setAgentFocusVariable: (name: string | null) => void;
+
+  setAgentResponse: (text: string) => void;
+  appendAgentResponse: (text: string) => void;
+  setAgentThinking: (text: string) => void;
+  appendAgentThinking: (text: string) => void;
+  setAgentStatus: (status: 'idle' | 'running' | 'completed' | 'error') => void;
+  setAgentUsage: (usage: TokenUsage | null) => void;
+  setAgentAbortController: (controller: AbortController | null) => void;
+
+  addAgentGeneration: (gen: { response: string; thinking: string; usage: TokenUsage | null }) => void;
+  setAgentGenerationIndex: (index: number) => void;
+  clearAgentGenerations: () => void;
+  acceptAgentResponse: () => Promise<void>;
 }
 
 export const useStore = create<AppState>()(
@@ -89,6 +138,20 @@ export const useStore = create<AppState>()(
     testerUsage: null,
     abortController: null,
     models: [],
+    agents: [],
+    activeAgentId: null,
+    activeAgent: null,
+    agentMessages: [],
+    agentVariables: {},
+    agentDrawerOpen: false,
+    agentFocusVariable: null,
+    agentResponse: '',
+    agentThinking: '',
+    agentStatus: 'idle',
+    agentUsage: null,
+    agentAbortController: null,
+    agentGenerations: [],
+    agentGenerationIndex: 0,
     activePage: 'prompt-tester',
     activeSubTab: 'tester',
 
@@ -223,6 +286,14 @@ export const useStore = create<AppState>()(
       });
     },
 
+    selectTestCase: (tcId) => {
+      set((s) => { s.selectedTestCaseIds[tcId] = true; });
+    },
+
+    deselectTestCase: (tcId) => {
+      set((s) => { delete s.selectedTestCaseIds[tcId]; });
+    },
+
     selectAllTestCases: () => {
       set((s) => {
         const sel: Record<string, true> = {};
@@ -294,6 +365,175 @@ export const useStore = create<AppState>()(
       vars.forEach((v: any) => { varMap[v.key] = v.value; });
       set((s) => { s.testerVariables = varMap; });
       return result;
+    },
+
+    // Agent actions
+
+    loadAgents: async () => {
+      const agents = await api.getAgents();
+      set((s) => { s.agents = agents; });
+    },
+
+    setActiveAgent: async (id: string) => {
+      const agent = await api.getAgent(id);
+      const messages = await api.getAgentMessages(id);
+      const vars = await api.getAgentVariables(id);
+      const varMap: Record<string, string> = {};
+      vars.forEach((v: any) => { varMap[v.key] = v.value; });
+
+      set((s) => {
+        s.activeAgentId = id;
+        s.activeAgent = agent;
+        s.agentMessages = messages;
+        s.agentVariables = varMap;
+        s.agentResponse = '';
+        s.agentThinking = '';
+        s.agentStatus = 'idle';
+        s.agentUsage = null;
+        s.agentGenerations = [];
+        s.agentGenerationIndex = 0;
+      });
+    },
+
+    createAgent: async () => {
+      const agent = await api.createAgent({ name: 'Untitled Agent' });
+      set((s) => { s.agents.unshift(agent); });
+      await get().setActiveAgent(agent.id);
+    },
+
+    updateAgent: async (data: Partial<Agent>) => {
+      const id = get().activeAgentId;
+      if (!id) return;
+      const updated = await api.updateAgent(id, data);
+      set((s) => {
+        s.activeAgent = updated;
+        const idx = s.agents.findIndex((a) => a.id === id);
+        if (idx >= 0) s.agents[idx] = updated;
+      });
+    },
+
+    deleteAgent: async (id: string) => {
+      await api.deleteAgent(id);
+      set((s) => {
+        s.agents = s.agents.filter((a) => a.id !== id);
+        if (s.activeAgentId === id) {
+          s.activeAgentId = null;
+          s.activeAgent = null;
+          s.agentMessages = [];
+          s.agentVariables = {};
+          s.agentGenerations = [];
+          s.agentGenerationIndex = 0;
+        }
+      });
+    },
+
+    loadAgentMessages: async () => {
+      const id = get().activeAgentId;
+      if (!id) return;
+      const messages = await api.getAgentMessages(id);
+      set((s) => { s.agentMessages = messages; });
+    },
+
+    addAgentMessagePair: async (assistantContent?: string) => {
+      const id = get().activeAgentId;
+      if (!id) return;
+      const messages = await api.addAgentMessagePair(id, assistantContent);
+      set((s) => { s.agentMessages = messages; });
+    },
+
+    updateAgentMessage: async (msgId: string, content: string) => {
+      await api.updateAgentMessage(msgId, content);
+      await get().loadAgentMessages();
+    },
+
+    deleteAgentMessage: async (msgId: string) => {
+      await api.deleteAgentMessage(msgId);
+      await get().loadAgentMessages();
+    },
+
+    setAgentVariable: (key, value) => {
+      set((s) => { s.agentVariables[key] = value; });
+    },
+
+    saveAgentVariables: async () => {
+      const id = get().activeAgentId;
+      if (!id) return;
+      const vars = get().agentVariables;
+      const arr = Object.entries(vars).map(([key, value]) => ({ key, value }));
+      await api.upsertAgentVariables(id, arr);
+    },
+
+    syncAgentVariables: async () => {
+      const id = get().activeAgentId;
+      if (!id) return;
+      await api.syncAgentVariables(id);
+      const vars = await api.getAgentVariables(id);
+      const varMap: Record<string, string> = {};
+      vars.forEach((v: any) => { varMap[v.key] = v.value; });
+      set((s) => { s.agentVariables = varMap; });
+    },
+
+    setAgentDrawerOpen: (open) => {
+      set((s) => { s.agentDrawerOpen = open; });
+    },
+
+    setAgentFocusVariable: (name) => {
+      set((s) => { s.agentFocusVariable = name; });
+    },
+
+    setAgentResponse: (text) => { set((s) => { s.agentResponse = text; }); },
+    appendAgentResponse: (text) => { set((s) => { s.agentResponse += text; }); },
+    setAgentThinking: (text) => { set((s) => { s.agentThinking = text; }); },
+    appendAgentThinking: (text) => { set((s) => { s.agentThinking += text; }); },
+    setAgentStatus: (status) => { set((s) => { s.agentStatus = status; }); },
+    setAgentUsage: (usage) => { set((s) => { s.agentUsage = usage; }); },
+    setAgentAbortController: (controller) => { set((s) => { s.agentAbortController = controller; }); },
+
+    addAgentGeneration: (gen) => {
+      set((s) => {
+        s.agentGenerations.push(gen);
+        s.agentGenerationIndex = s.agentGenerations.length - 1;
+      });
+    },
+
+    setAgentGenerationIndex: (index) => {
+      set((s) => {
+        s.agentGenerationIndex = index;
+        const gen = s.agentGenerations[index];
+        if (gen) {
+          s.agentResponse = gen.response;
+          s.agentThinking = gen.thinking;
+          s.agentUsage = gen.usage;
+        }
+      });
+    },
+
+    clearAgentGenerations: () => {
+      set((s) => {
+        s.agentGenerations = [];
+        s.agentGenerationIndex = 0;
+      });
+    },
+
+    acceptAgentResponse: async () => {
+      const id = get().activeAgentId;
+      const gens = get().agentGenerations;
+      const genIdx = get().agentGenerationIndex;
+      if (!id || gens.length === 0) return;
+
+      const currentGen = gens[genIdx];
+      await api.addAgentMessagePair(id, currentGen.response);
+      const messages = await api.getAgentMessages(id);
+
+      set((s) => {
+        s.agentMessages = messages;
+        s.agentResponse = '';
+        s.agentThinking = '';
+        s.agentStatus = 'idle';
+        s.agentUsage = null;
+        s.agentGenerations = [];
+        s.agentGenerationIndex = 0;
+      });
     },
   })),
 );
