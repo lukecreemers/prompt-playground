@@ -40,7 +40,7 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
     // Remove edges targeting handles that no longer exist on the new prompt
     const newVars = prompt ? new Set(detectVariables(prompt.content)) : new Set<string>();
     const { chainEdges, setChainEdges } = useStore.getState();
-    setChainEdges(chainEdges.filter((e) => e.target !== id || newVars.has(e.targetHandle ?? '')));
+    setChainEdges(chainEdges.filter((e) => e.target !== id || e.targetHandle === 'trigger' || newVars.has(e.targetHandle ?? '')));
   }, [id, config, prompts, updateConfig]);
 
   // Resizable output area
@@ -122,6 +122,18 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
         >
           <div className="w-8 h-0.5 bg-border rounded" />
         </div>
+      </div>
+
+      {/* Trigger handle */}
+      <div className="relative flex items-center pl-4 pr-3 py-1.5 text-muted-foreground hover:bg-muted/30 transition-colors">
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="trigger"
+          className="!w-3 !h-3 !bg-orange-500 !border-2 !border-background !left-[-4px]"
+          style={{ top: '50%', position: 'absolute' }}
+        />
+        <span className="font-mono text-[11px] text-orange-500">trigger</span>
       </div>
 
       {/* Variable input handles */}

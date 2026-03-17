@@ -7,6 +7,17 @@ import { ChainEdge } from '../database/entities/chain-edge.entity';
 
 type SendFn = (event: string, data: any) => void;
 
+function evaluateCondition(input: string, operator: string, value: string): boolean {
+  switch (operator) {
+    case 'equals': return input === value;
+    case 'contains': return input.includes(value);
+    case 'startsWith': return input.startsWith(value);
+    case 'endsWith': return input.endsWith(value);
+    case 'regex': return new RegExp(value).test(input);
+    default: return false;
+  }
+}
+
 @Injectable()
 export class ChainExecutorService {
   private activeRuns = new Map<string, AbortController>();
@@ -126,6 +137,7 @@ export class ChainExecutorService {
           const inputs = nodeInputs.get(nodeId)!;
           const variables: Record<string, string> = {};
           for (const [handle, value] of inputs) {
+            if (handle === 'trigger') continue;
             variables[handle] = value;
           }
 
@@ -201,19 +213,56 @@ export class ChainExecutorService {
             output: fullText,
             thinking: fullThinking || undefined,
           });
+        } else if (node.type === 'conditional') {
+          const input = nodeInputs.get(nodeId)?.get('input') || '';
+          const conditions: { label: string; operator: string; value: string }[] = config.conditions || [];
+          let matchedHandle = 'else';
+          for (const cond of conditions) {
+            if (evaluateCondition(input, cond.operator, cond.value)) {
+              matchedHandle = cond.label;
+              break;
+            }
+          }
+          nodeOutputs.set(nodeId, input);
+          send('node_done', { nodeId, output: input, matchedHandle });
+
+          // Store matched handle for propagation filtering
+          (node as any)._matchedHandle = matchedHandle;
+        } else if (node.type === 'merge') {
+          const inputs = nodeInputs.get(nodeId)!;
+          let mergeOutput = '';
+          for (let i = 0; i < (config.inputCount || 2); i++) {
+            const val = inputs.get(`input_${i}`);
+            if (val !== undefined) { mergeOutput = val; break; }
+          }
+          nodeOutputs.set(nodeId, mergeOutput);
+          send('node_done', { nodeId, output: mergeOutput });
         }
 
         completed.add(nodeId);
 
         // Propagate output to downstream nodes
         const output = nodeOutputs.get(nodeId) || '';
+        const matchedHandle = (node as any)._matchedHandle as string | undefined;
+
         for (const edge of outbound.get(nodeId) || []) {
+          // For conditional nodes, only propagate on the matched handle
+          if (node.type === 'conditional' && edge.sourceHandle !== matchedHandle) continue;
+
           nodeInputs.get(edge.targetNodeId)?.set(edge.targetHandle, output);
 
           // Check if target is now ready
+          const targetNode = nodeMap.get(edge.targetNodeId)!;
           const targetInbound = inbound.get(edge.targetNodeId)!;
           const targetInputMap = nodeInputs.get(edge.targetNodeId)!;
-          const allReady = targetInbound.every((e) => targetInputMap.has(e.targetHandle));
+
+          let allReady: boolean;
+          if (targetNode.type === 'merge') {
+            // Merge fires when ANY input has a value
+            allReady = true;
+          } else {
+            allReady = targetInbound.every((e) => targetInputMap.has(e.targetHandle));
+          }
 
           if (allReady && !completed.has(edge.targetNodeId) && !running.has(edge.targetNodeId)) {
             ready.add(edge.targetNodeId);

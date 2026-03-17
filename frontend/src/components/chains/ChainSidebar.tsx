@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, Trash2 } from 'lucide-react';
 import { detectVariables } from '@/lib/interpolate';
 
 const NODE_CATEGORIES = [
@@ -17,6 +17,13 @@ const NODE_CATEGORIES = [
   {
     label: 'AI',
     items: [{ type: 'prompt', label: 'Prompt', icon: MessageSquare }],
+  },
+  {
+    label: 'Logic',
+    items: [
+      { type: 'conditional', label: 'Conditional', icon: GitBranch },
+      { type: 'merge', label: 'Merge', icon: Merge },
+    ],
   },
 ];
 
@@ -106,7 +113,12 @@ export function ChainSidebar() {
     <div className="w-56 border-r border-border flex flex-col bg-card">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          {selectedNode ? (selectedNode.type === 'variable' ? 'Variable Config' : 'Prompt Config') : 'Nodes'}
+          {selectedNode
+            ? selectedNode.type === 'variable' ? 'Variable Config'
+            : selectedNode.type === 'conditional' ? 'Conditional Config'
+            : selectedNode.type === 'merge' ? 'Merge Config'
+            : 'Prompt Config'
+            : 'Nodes'}
         </span>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setCollapsed(true)}>
           <PanelLeftClose className="h-3.5 w-3.5" />
@@ -231,6 +243,90 @@ export function ChainSidebar() {
                   </div>
                 )}
               </>
+            )}
+
+            {selectedNode.type === 'conditional' && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Conditions</Label>
+                {(config.conditions || []).map((cond: any, i: number) => (
+                  <div key={i} className="space-y-1 p-2 border border-border rounded bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <Input
+                        value={cond.label}
+                        onChange={(e) => {
+                          const conditions = [...(config.conditions || [])];
+                          conditions[i] = { ...conditions[i], label: e.target.value };
+                          updateNodeConfig({ conditions });
+                        }}
+                        placeholder="Label"
+                        className="h-6 text-xs flex-1 mr-1"
+                      />
+                      <button
+                        onClick={() => {
+                          const conditions = (config.conditions || []).filter((_: any, j: number) => j !== i);
+                          updateNodeConfig({ conditions });
+                        }}
+                        className="text-muted-foreground hover:text-foreground shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <Select
+                      value={cond.operator}
+                      onValueChange={(v) => {
+                        const conditions = [...(config.conditions || [])];
+                        conditions[i] = { ...conditions[i], operator: v };
+                        updateNodeConfig({ conditions });
+                      }}
+                    >
+                      <SelectTrigger className="h-6 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="equals">equals</SelectItem>
+                        <SelectItem value="contains">contains</SelectItem>
+                        <SelectItem value="startsWith">startsWith</SelectItem>
+                        <SelectItem value="endsWith">endsWith</SelectItem>
+                        <SelectItem value="regex">regex</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={cond.value}
+                      onChange={(e) => {
+                        const conditions = [...(config.conditions || [])];
+                        conditions[i] = { ...conditions[i], value: e.target.value };
+                        updateNodeConfig({ conditions });
+                      }}
+                      placeholder="Value"
+                      className="h-6 text-xs"
+                    />
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-7 text-xs"
+                  onClick={() => {
+                    const conditions = [...(config.conditions || []), { label: `cond_${(config.conditions || []).length}`, operator: 'contains', value: '' }];
+                    updateNodeConfig({ conditions });
+                  }}
+                >
+                  Add Condition
+                </Button>
+              </div>
+            )}
+
+            {selectedNode.type === 'merge' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Input Count</Label>
+                <Input
+                  type="number"
+                  min={2}
+                  value={config.inputCount || 2}
+                  onChange={(e) => updateNodeConfig({ inputCount: Math.max(2, parseInt(e.target.value) || 2) })}
+                  className="h-7 text-xs"
+                />
+              </div>
             )}
           </div>
         ) : (

@@ -710,7 +710,11 @@ export const useStore = create<AppState>()(
 
     addChainNode: (type, position) => {
       const id = crypto.randomUUID();
-      const defaultConfig = type === 'variable' ? { text: '' } : { promptId: '' };
+      const defaultConfig =
+        type === 'variable' ? { text: '' }
+        : type === 'conditional' ? { conditions: [] }
+        : type === 'merge' ? { inputCount: 2 }
+        : { promptId: '' };
       const newNode: Node = {
         id,
         type,

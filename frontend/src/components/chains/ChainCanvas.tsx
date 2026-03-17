@@ -10,10 +10,14 @@ import '@xyflow/react/dist/style.css';
 import { useStore } from '@/store';
 import { VariableNode } from './VariableNode';
 import { PromptNode } from './PromptNode';
+import { ConditionalNode } from './ConditionalNode';
+import { MergeNode } from './MergeNode';
 
 const nodeTypes = {
   variable: VariableNode,
   prompt: PromptNode,
+  conditional: ConditionalNode,
+  merge: MergeNode,
 };
 
 export function ChainCanvas() {
