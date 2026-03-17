@@ -2,12 +2,15 @@ import { useEffect } from "react";
 import "./App.css";
 import { useStore } from "@/store";
 import { AppHeader } from "@/components/layout/AppHeader";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import { PromptTesterTab } from "@/components/prompt-tester/PromptTesterTab";
 import { TestCasesTab } from "@/components/test-cases/TestCasesTab";
 import { Toaster } from "@/components/ui/sonner";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 function App() {
-  const activeTab = useStore((s) => s.activeTab);
+  const activePage = useStore((s) => s.activePage);
+  const activeSubTab = useStore((s) => s.activeSubTab);
   const loadPrompts = useStore((s) => s.loadPrompts);
   const loadModels = useStore((s) => s.loadModels);
   const prompts = useStore((s) => s.prompts);
@@ -27,22 +30,34 @@ function App() {
   }, [prompts, activePromptId]);
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <AppHeader />
-      <main className="flex-1 overflow-hidden p-3 pt-3 relative">
-        <div className={activeTab === "tester"
-          ? "absolute inset-0 p-3 pt-3"
-          : "absolute inset-0 p-3 pt-3 invisible"}>
-          <PromptTesterTab />
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <AppHeader />
+        <div className="flex-1 overflow-hidden relative">
+          {activePage === "prompt-tester" && (
+            <>
+              <div className={activeSubTab === "tester"
+                ? "absolute inset-0 p-3"
+                : "absolute inset-0 p-3 invisible"}>
+                <PromptTesterTab />
+              </div>
+              <div className={activeSubTab === "test-cases"
+                ? "absolute inset-0 p-3"
+                : "absolute inset-0 p-3 invisible"}>
+                <TestCasesTab />
+              </div>
+            </>
+          )}
+          {activePage !== "prompt-tester" && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-muted-foreground">Coming soon</p>
+            </div>
+          )}
         </div>
-        <div className={activeTab === "test-cases"
-          ? "absolute inset-0 p-3 pt-3"
-          : "absolute inset-0 p-3 pt-3 invisible"}>
-          <TestCasesTab />
-        </div>
-      </main>
+      </SidebarInset>
       <Toaster />
-    </div>
+    </SidebarProvider>
   );
 }
 

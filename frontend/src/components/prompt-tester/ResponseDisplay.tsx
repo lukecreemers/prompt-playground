@@ -1,12 +1,36 @@
+import { useMemo } from 'react';
 import { useStore } from '@/store';
 import { ThinkingBlock } from './ThinkingBlock';
 import { MarkdownOutput } from './MarkdownOutput';
 import { Loader2, Play } from 'lucide-react';
+import { TokenUsage, ModelInfo } from '@/types';
+
+function calcCosts(usage: TokenUsage, model: ModelInfo) {
+  const inputCost = (usage.input_tokens * model.inputTokenCost) / 1_000_000;
+  const outputCost = (usage.output_tokens * model.outputTokenCost) / 1_000_000;
+  return { inputCost, outputCost, totalCost: inputCost + outputCost };
+}
+
+function formatCost(cost: number) {
+  if (cost < 0.0001) return `$${cost.toFixed(6)}`;
+  return `$${cost.toFixed(4)}`;
+}
 
 export function ResponseDisplay() {
   const response = useStore((s) => s.testerResponse);
   const thinking = useStore((s) => s.testerThinking);
   const status = useStore((s) => s.testerStatus);
+  const testerUsage = useStore((s) => s.testerUsage);
+  const activePrompt = useStore((s) => s.activePrompt);
+  const models = useStore((s) => s.models);
+
+  const costInfo = useMemo(() => {
+    if (!testerUsage || status !== 'completed' || !activePrompt) return null;
+    const model = models.find((m) => m.id === activePrompt.modelName);
+    if (!model) return null;
+    const { outputCost, totalCost } = calcCosts(testerUsage, model);
+    return { outputTokens: testerUsage.output_tokens, outputCost, totalCost };
+  }, [testerUsage, status, activePrompt, models]);
 
   return (
     <div className="flex-1 flex flex-col p-5 overflow-auto">
@@ -34,6 +58,11 @@ export function ResponseDisplay() {
         {thinking && <ThinkingBlock content={thinking} />}
         {response && <MarkdownOutput content={response} />}
       </div>
+      {costInfo && (
+        <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">
+          Output: {costInfo.outputTokens.toLocaleString()} tokens · {formatCost(costInfo.outputCost)} | Total: {formatCost(costInfo.totalCost)}
+        </p>
+      )}
     </div>
   );
 }

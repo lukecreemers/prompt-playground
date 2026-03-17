@@ -1,7 +1,7 @@
-import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '@/store';
-import { segmentText, detectVariables } from '@/lib/interpolate';
+import { detectVariables } from '@/lib/interpolate';
 import { cn } from '@/lib/utils';
 
 const BUILTIN_VARS: Record<string, string> = {
@@ -28,7 +28,6 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
   const activePrompt = useStore((s) => s.activePrompt);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const overlayInnerRef = useRef<HTMLDivElement>(null);
 
   // Local state -- typing never hits the network
   const [text, setText] = useState(value);
@@ -54,24 +53,6 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
     const partial = ac.partial.toLowerCase();
     return availableVars.filter((v) => v.toLowerCase().startsWith(partial));
   }, [ac, availableVars]);
-
-  useEffect(() => {
-    const ta = textareaRef.current;
-    const inner = overlayInnerRef.current;
-    if (!ta || !inner) return;
-    const sync = () => { inner.style.width = ta.clientWidth + 'px'; };
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(ta);
-    return () => ro.disconnect();
-  }, []);
-
-  const syncScroll = useCallback(() => {
-    if (overlayInnerRef.current && textareaRef.current) {
-      const ta = textareaRef.current;
-      overlayInnerRef.current.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`;
-    }
-  }, []);
 
   const getDropdownPosition = () => {
     const ta = textareaRef.current;
@@ -146,38 +127,21 @@ export function EvalPromptInput({ value, onChange, placeholder, className }: Eva
     if (text !== value) onChange(text);
   };
 
-  const segments = useMemo(() => segmentText(text), [text]);
-
   const dropdownPos = ac && suggestions.length > 0 ? getDropdownPosition() : null;
 
   return (
-    <div className={cn("eval-textarea-wrap relative", className)}>
+    <div className="relative">
       <textarea
         ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyUp={onKeyUp}
         onKeyDown={onKeyDown}
-        onScroll={syncScroll}
         onBlur={handleBlur}
         onClick={onKeyUp}
-        placeholder=""
-        className="eval-textarea block relative z-[2] w-full font-mono text-sm text-transparent caret-foreground selection:bg-primary/20 bg-transparent resize-y min-h-[100px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]"
+        placeholder={placeholder}
+        className={cn("block w-full font-mono text-sm resize-y min-h-[100px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]", className)}
       />
-
-      <div aria-hidden className="absolute inset-px z-[1] overflow-hidden pointer-events-none rounded-md">
-        <div ref={overlayInnerRef} className="font-mono text-sm p-3 whitespace-pre-wrap break-words leading-[1.5]">
-          {text ? segments.map((seg, i) =>
-            seg.isVariable ? (
-              <span key={i} className="text-primary">{seg.text}</span>
-            ) : (
-              <span key={i} className="text-foreground">{seg.text}</span>
-            ),
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-        </div>
-      </div>
 
       {ac && suggestions.length > 0 && dropdownPos && createPortal(
         <div

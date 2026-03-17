@@ -55,7 +55,7 @@ function RowCheckbox({ id }: { id: string }) {
 function RowActions({ row }: { row: TestCase }) {
   const deleteTestCase = useStore((s) => s.deleteTestCase);
   const setTesterVariables = useStore((s) => s.setTesterVariables);
-  const setActiveTab = useStore((s) => s.setActiveTab);
+  const setActiveSubTab = useStore((s) => s.setActiveSubTab);
 
   return (
     <div className="flex items-center gap-0.5">
@@ -67,7 +67,7 @@ function RowActions({ row }: { row: TestCase }) {
         onClick={() => {
           const vars = JSON.parse(row.variables || '{}');
           setTesterVariables(vars);
-          setActiveTab('tester');
+          setActiveSubTab('tester');
         }}
       >
         <ArrowUpRight className="h-3.5 w-3.5" />

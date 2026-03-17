@@ -31,6 +31,15 @@
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+
+  --color-sidebar: hsl(220 10% 97%);
+  --color-sidebar-foreground: hsl(220 20% 10%);
+  --color-sidebar-primary: hsl(258 75% 58%);
+  --color-sidebar-primary-foreground: hsl(0 0% 100%);
+  --color-sidebar-accent: hsl(258 60% 95%);
+  --color-sidebar-accent-foreground: hsl(258 70% 45%);
+  --color-sidebar-border: hsl(220 10% 88%);
+  --color-sidebar-ring: hsl(258 75% 58%);
 }
 
 /* ── Dark mode overrides ── */
@@ -54,6 +63,15 @@
   --color-border: hsl(225 6% 24%);
   --color-input: hsl(225 6% 24%);
   --color-ring: hsl(258 75% 62%);
+
+  --color-sidebar: hsl(225 6% 13%);
+  --color-sidebar-foreground: hsl(210 20% 95%);
+  --color-sidebar-primary: hsl(258 75% 62%);
+  --color-sidebar-primary-foreground: hsl(0 0% 100%);
+  --color-sidebar-accent: hsl(258 40% 22%);
+  --color-sidebar-accent-foreground: hsl(258 80% 80%);
+  --color-sidebar-border: hsl(225 6% 24%);
+  --color-sidebar-ring: hsl(258 75% 62%);
 }
 
 /* Smooth transitions on non-input elements (skip hidden tab panels to avoid mass reflow) */
@@ -158,32 +176,6 @@ body {
 .section-label {
   @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground;
   letter-spacing: 0.08em;
-}
-
-/* Resize grip for eval prompt textarea */
-.eval-textarea::-webkit-resizer {
-  display: none;
-}
-.eval-textarea-wrap::after {
-  content: '';
-  position: absolute;
-  bottom: 1px;
-  right: 1px;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  z-index: 3;
-  border-radius: 0 0 0.5rem 0;
-  background:
-    linear-gradient(135deg, transparent 50%, hsl(220 10% 72%) 50%, hsl(220 10% 72%) 55%, transparent 55%),
-    linear-gradient(135deg, transparent 65%, hsl(220 10% 72%) 65%, hsl(220 10% 72%) 70%, transparent 70%),
-    linear-gradient(135deg, transparent 80%, hsl(220 10% 72%) 80%, hsl(220 10% 72%) 85%, transparent 85%);
-}
-.dark .eval-textarea-wrap::after {
-  background:
-    linear-gradient(135deg, transparent 50%, hsl(225 6% 38%) 50%, hsl(225 6% 38%) 55%, transparent 55%),
-    linear-gradient(135deg, transparent 65%, hsl(225 6% 38%) 65%, hsl(225 6% 38%) 70%, transparent 70%),
-    linear-gradient(135deg, transparent 80%, hsl(225 6% 38%) 80%, hsl(225 6% 38%) 85%, transparent 85%);
 }
 
 /* Focus ring */

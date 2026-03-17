@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Prompt, TestCase, ModelInfo } from '../types';
+import { Prompt, TestCase, ModelInfo, TokenUsage } from '../types';
 import { api } from '../lib/api';
 
 interface AppState {
@@ -21,13 +21,16 @@ interface AppState {
   testerResponse: string;
   testerThinking: string;
   testerStatus: 'idle' | 'running' | 'completed' | 'error';
+  testerUsage: TokenUsage | null;
   abortController: AbortController | null;
 
   // Models
   models: ModelInfo[];
 
-  // Active tab
-  activeTab: 'tester' | 'test-cases';
+  // Sidebar page
+  activePage: 'prompt-tester' | 'agent-tester' | 'benchmarks';
+  // Sub-tab within prompt tester page
+  activeSubTab: 'tester' | 'test-cases';
 
   // Actions
   loadPrompts: () => Promise<void>;
@@ -59,10 +62,12 @@ interface AppState {
   setTesterThinking: (text: string) => void;
   appendTesterThinking: (text: string) => void;
   setTesterStatus: (status: 'idle' | 'running' | 'completed' | 'error') => void;
+  setTesterUsage: (usage: TokenUsage | null) => void;
   setAbortController: (controller: AbortController | null) => void;
 
   loadModels: () => Promise<void>;
-  setActiveTab: (tab: 'tester' | 'test-cases') => void;
+  setActivePage: (page: 'prompt-tester' | 'agent-tester' | 'benchmarks') => void;
+  setActiveSubTab: (tab: 'tester' | 'test-cases') => void;
   syncVariables: () => Promise<void>;
 }
 
@@ -78,9 +83,11 @@ export const useStore = create<AppState>()(
     testerResponse: '',
     testerThinking: '',
     testerStatus: 'idle',
+    testerUsage: null,
     abortController: null,
     models: [],
-    activeTab: 'tester',
+    activePage: 'prompt-tester',
+    activeSubTab: 'tester',
 
     loadPrompts: async () => {
       const prompts = await api.getPrompts();
@@ -100,6 +107,7 @@ export const useStore = create<AppState>()(
         s.testerResponse = '';
         s.testerThinking = '';
         s.testerStatus = 'idle';
+        s.testerUsage = null;
       });
 
       // Load test cases
@@ -258,6 +266,7 @@ export const useStore = create<AppState>()(
     setTesterThinking: (text) => { set((s) => { s.testerThinking = text; }); },
     appendTesterThinking: (text) => { set((s) => { s.testerThinking += text; }); },
     setTesterStatus: (status) => { set((s) => { s.testerStatus = status; }); },
+    setTesterUsage: (usage) => { set((s) => { s.testerUsage = usage; }); },
     setAbortController: (controller) => { set((s) => { s.abortController = controller; }); },
 
     loadModels: async () => {
@@ -265,7 +274,8 @@ export const useStore = create<AppState>()(
       set((s) => { s.models = models; });
     },
 
-    setActiveTab: (tab) => { set((s) => { s.activeTab = tab; }); },
+    setActivePage: (page) => { set((s) => { s.activePage = page; }); },
+    setActiveSubTab: (tab) => { set((s) => { s.activeSubTab = tab; }); },
 
     syncVariables: async () => {
       const id = get().activePromptId;

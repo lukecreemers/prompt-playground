@@ -2,27 +2,33 @@ import { useStore } from '@/store';
 import { PromptNameEditor } from './PromptNameEditor';
 import { ModelConfigBar } from './ModelConfigBar';
 import { RunButton } from './RunButton';
-import { ThemeToggle } from './ThemeToggle';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function AppHeader() {
-  const activeTab = useStore((s) => s.activeTab);
-  const setActiveTab = useStore((s) => s.setActiveTab);
+  const activePage = useStore((s) => s.activePage);
+  const activeSubTab = useStore((s) => s.activeSubTab);
+  const setActiveSubTab = useStore((s) => s.setActiveSubTab);
 
   return (
-    <header className="border-b border-border bg-card/80 backdrop-blur-sm px-5 py-2.5 flex items-center gap-4">
+    <header className="border-b border-border bg-card/80 backdrop-blur-sm px-3 py-2.5 flex items-center gap-3">
+      <SidebarTrigger />
+      <Separator orientation="vertical" className="h-4" />
       <PromptNameEditor />
-      <div className="flex-1 flex justify-center">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="tester">Prompt Tester</TabsTrigger>
-            <TabsTrigger value="test-cases">Test Cases</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {activePage === 'prompt-tester' && (
+        <div className="flex-1 flex justify-center">
+          <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as any)}>
+            <TabsList>
+              <TabsTrigger value="tester">Prompt Tester</TabsTrigger>
+              <TabsTrigger value="test-cases">Test Cases</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
+      {activePage !== 'prompt-tester' && <div className="flex-1" />}
       <div className="flex items-center gap-2">
         <ModelConfigBar />
-        <ThemeToggle />
         <RunButton />
       </div>
     </header>

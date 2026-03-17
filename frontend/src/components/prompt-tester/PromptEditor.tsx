@@ -1,19 +1,40 @@
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
-import { segmentText } from '@/lib/interpolate';
 import { Badge } from '@/components/ui/badge';
 import { useDetectedVariables } from '@/hooks/useDetectedVariables';
 import { Settings, FileText } from 'lucide-react';
+import { TokenUsage, ModelInfo } from '@/types';
+
+function calcCosts(usage: TokenUsage, model: ModelInfo) {
+  const inputCost = (usage.input_tokens * model.inputTokenCost) / 1_000_000;
+  const outputCost = (usage.output_tokens * model.outputTokenCost) / 1_000_000;
+  return { inputCost, outputCost, totalCost: inputCost + outputCost };
+}
+
+function formatCost(cost: number) {
+  if (cost < 0.0001) return `$${cost.toFixed(6)}`;
+  return `$${cost.toFixed(4)}`;
+}
 
 export function PromptEditor() {
   const activePrompt = useStore((s) => s.activePrompt);
   const updatePrompt = useStore((s) => s.updatePrompt);
   const syncVariables = useStore((s) => s.syncVariables);
   const setDrawerOpen = useStore((s) => s.setDrawerOpen);
+  const testerUsage = useStore((s) => s.testerUsage);
+  const testerStatus = useStore((s) => s.testerStatus);
+  const models = useStore((s) => s.models);
   const detectedVars = useDetectedVariables();
+
+  const inputCostInfo = useMemo(() => {
+    if (!testerUsage || testerStatus !== 'completed' || !activePrompt) return null;
+    const model = models.find((m) => m.id === activePrompt.modelName);
+    if (!model) return null;
+    const { inputCost } = calcCosts(testerUsage, model);
+    return { tokens: testerUsage.input_tokens, cost: inputCost };
+  }, [testerUsage, testerStatus, activePrompt, models]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const overlayInnerRef = useRef<HTMLDivElement>(null);
 
   const [text, setText] = useState(activePrompt?.content ?? '');
 
@@ -25,27 +46,6 @@ export function PromptEditor() {
       setText(activePrompt?.content ?? '');
     }
   }, [activePrompt?.content]);
-
-  const segments = useMemo(() => segmentText(text), [text]);
-
-  const syncScroll = useCallback(() => {
-    if (overlayInnerRef.current && textareaRef.current) {
-      const ta = textareaRef.current;
-      overlayInnerRef.current.style.transform = `translate(${-ta.scrollLeft}px, ${-ta.scrollTop}px)`;
-    }
-  }, []);
-
-  // Keep overlay width matched to textarea's content width (excludes scrollbar)
-  useEffect(() => {
-    const ta = textareaRef.current;
-    const inner = overlayInnerRef.current;
-    if (!ta || !inner) return;
-    const sync = () => { inner.style.width = ta.clientWidth + 'px'; };
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(ta);
-    return () => ro.disconnect();
-  }, []);
 
   const handleBlur = useCallback(async () => {
     if (text !== activePrompt?.content) {
@@ -80,35 +80,15 @@ export function PromptEditor() {
           Variables ({detectedVars.length})
         </Button>
       </div>
-      <div className="relative flex-1 bg-muted/40 rounded-md">
+      <div className="relative flex-1">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onBlur={handleBlur}
-          onScroll={syncScroll}
-          placeholder=""
-          className="relative z-[2] w-full h-full resize-none font-mono text-sm text-transparent caret-foreground selection:bg-primary/20 bg-transparent min-h-[300px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]"
+          placeholder="Write your prompt here. Use {{variableName}} for variables..."
+          className="w-full h-full resize-none font-mono text-sm bg-muted/40 min-h-[300px] p-3 rounded-md border border-border/50 focus:border-primary/30 focus:outline-none leading-[1.5]"
         />
-        <div
-          aria-hidden
-          className="absolute inset-px z-[1] overflow-hidden pointer-events-none rounded-md"
-        >
-          <div
-            ref={overlayInnerRef}
-            className="font-mono text-sm p-3 whitespace-pre-wrap break-words leading-[1.5]"
-          >
-            {text ? segments.map((seg, i) =>
-              seg.isVariable ? (
-                <span key={i} className="text-primary">{seg.text}</span>
-              ) : (
-                <span key={i} className="text-foreground">{seg.text}</span>
-              ),
-            ) : (
-              <span className="text-muted-foreground/40">Write your prompt here. Use {'{{variableName}}'} for variables...</span>
-            )}
-          </div>
-        </div>
       </div>
       {detectedVars.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-3">
@@ -118,6 +98,11 @@ export function PromptEditor() {
             </Badge>
           ))}
         </div>
+      )}
+      {inputCostInfo && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Input: {inputCostInfo.tokens.toLocaleString()} tokens · {formatCost(inputCostInfo.cost)}
+        </p>
       )}
     </div>
   );

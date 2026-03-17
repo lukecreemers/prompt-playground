@@ -4,6 +4,8 @@ export interface ModelInfo {
   provider: string;
   maxOutputTokens: number;
   supportsThinking: boolean;
+  inputTokenCost: number;  // cost per 1M tokens in USD
+  outputTokenCost: number; // cost per 1M tokens in USD
 }
 
 export const MODEL_CATALOG: ModelInfo[] = [
@@ -13,6 +15,8 @@ export const MODEL_CATALOG: ModelInfo[] = [
     provider: 'anthropic',
     maxOutputTokens: 16384,
     supportsThinking: true,
+    inputTokenCost: 3,
+    outputTokenCost: 15,
   },
   {
     id: 'claude-haiku-4-5',
@@ -20,6 +24,8 @@ export const MODEL_CATALOG: ModelInfo[] = [
     provider: 'anthropic',
     maxOutputTokens: 16384,
     supportsThinking: true,
+    inputTokenCost: 0.80,
+    outputTokenCost: 4,
   },
   {
     id: 'claude-opus-4-6',
@@ -27,6 +33,8 @@ export const MODEL_CATALOG: ModelInfo[] = [
     provider: 'anthropic',
     maxOutputTokens: 16384,
     supportsThinking: true,
+    inputTokenCost: 15,
+    outputTokenCost: 75,
   },
 ];
 

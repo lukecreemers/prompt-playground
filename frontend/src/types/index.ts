@@ -43,4 +43,13 @@ export interface ModelInfo {
   provider: string;
   maxOutputTokens: number;
   supportsThinking: boolean;
+  inputTokenCost: number;
+  outputTokenCost: number;
+}
+
+export interface TokenUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 }

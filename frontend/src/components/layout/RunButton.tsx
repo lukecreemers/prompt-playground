@@ -18,6 +18,7 @@ export function RunButton() {
     const store = useStore.getState();
     store.setTesterResponse('');
     store.setTesterThinking('');
+    store.setTesterUsage(null);
     store.setTesterStatus('running');
 
     const controller = new AbortController();
@@ -37,6 +38,7 @@ export function RunButton() {
               s.appendTesterThinking(data.content);
               break;
             case 'done':
+              if (data.usage) s.setTesterUsage(data.usage);
               s.setTesterStatus('completed');
               break;
             case 'error':
