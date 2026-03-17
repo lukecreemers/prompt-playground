@@ -2,18 +2,22 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '@/store';
 import { AgentMessage } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Trash2, User, Bot } from 'lucide-react';
 import { detectVariables } from '@/lib/interpolate';
 import { PromptBox } from '@/components/prompt-box/PromptBox';
 
 interface MessageCardProps {
   message: AgentMessage;
+  onDeleteHover?: (hovering: boolean) => void;
+  onDelete?: () => void;
   deletable?: boolean;
+  deleteTooltip?: string;
+  highlighted?: boolean;
 }
 
-export function MessageCard({ message, deletable = true }: MessageCardProps) {
+export function MessageCard({ message, onDeleteHover, onDelete, deletable = true, deleteTooltip, highlighted = false }: MessageCardProps) {
   const updateAgentMessage = useStore((s) => s.updateAgentMessage);
-  const deleteAgentMessage = useStore((s) => s.deleteAgentMessage);
   const syncAgentVariables = useStore((s) => s.syncAgentVariables);
   const agentVariables = useStore((s) => s.agentVariables);
   const setAgentFocusVariable = useStore((s) => s.setAgentFocusVariable);
@@ -59,7 +63,7 @@ export function MessageCard({ message, deletable = true }: MessageCardProps) {
   const isUser = message.role === 'user';
 
   return (
-    <div className={`rounded-lg border ${isUser ? 'border-border' : 'border-primary/20 bg-primary/5'}`}>
+    <div className={`rounded-lg border ${isUser ? 'border-border bg-card' : 'border-primary/20 bg-card'}`}>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
         <div className="flex items-center gap-1.5 text-xs font-medium">
           {isUser ? (
@@ -69,14 +73,23 @@ export function MessageCard({ message, deletable = true }: MessageCardProps) {
           )}
         </div>
         {deletable && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-            onClick={() => deleteAgentMessage(message.id)}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                  onMouseEnter={() => onDeleteHover?.(true)}
+                  onMouseLeave={() => onDeleteHover?.(false)}
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              {deleteTooltip && <TooltipContent side="left">{deleteTooltip}</TooltipContent>}
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
       <PromptBox

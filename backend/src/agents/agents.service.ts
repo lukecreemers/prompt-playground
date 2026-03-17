@@ -60,6 +60,18 @@ export class AgentsService {
     });
   }
 
+  async addMessage(agentId: string, role: 'user' | 'assistant', content: string = ''): Promise<AgentMessage[]> {
+    const existing = await this.getMessages(agentId);
+    const nextIndex = existing.length > 0 ? Math.max(...existing.map((m) => m.orderIndex)) + 1 : 0;
+
+    await this.msgRepo.save(
+      this.msgRepo.create({ agentId, role, content, orderIndex: nextIndex }),
+    );
+
+    await this.agentRepo.update(agentId, {});
+    return this.getMessages(agentId);
+  }
+
   async addMessagePair(agentId: string, assistantContent?: string): Promise<AgentMessage[]> {
     const existing = await this.getMessages(agentId);
     const nextIndex = existing.length > 0 ? Math.max(...existing.map((m) => m.orderIndex)) + 1 : 0;

@@ -59,6 +59,8 @@ export const api = {
   getAgentMessages: (agentId: string) => request<any[]>(`/agents/${agentId}/messages`),
   addAgentMessagePair: (agentId: string, assistantContent?: string) =>
     request<any[]>(`/agents/${agentId}/messages`, { method: 'POST', body: JSON.stringify({ assistantContent }) }),
+  addAgentMessage: (agentId: string, role: 'user' | 'assistant') =>
+    request<any[]>(`/agents/${agentId}/messages`, { method: 'POST', body: JSON.stringify({ role }) }),
   updateAgentMessage: (msgId: string, content: string) =>
     request<any>(`/agent-messages/${msgId}`, { method: 'PATCH', body: JSON.stringify({ content }) }),
   deleteAgentMessage: (msgId: string) =>

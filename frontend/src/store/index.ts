@@ -99,8 +99,10 @@ interface AppState {
 
   loadAgentMessages: () => Promise<void>;
   addAgentMessagePair: (assistantContent?: string) => Promise<void>;
+  addAgentUserMessage: () => Promise<void>;
   updateAgentMessage: (msgId: string, content: string) => Promise<void>;
   deleteAgentMessage: (msgId: string) => Promise<void>;
+  deleteAgentMessagePair: (msgId1: string, msgId2: string) => Promise<void>;
 
   setAgentVariable: (key: string, value: string) => void;
   saveAgentVariables: () => Promise<void>;
@@ -441,6 +443,13 @@ export const useStore = create<AppState>()(
       set((s) => { s.agentMessages = messages; });
     },
 
+    addAgentUserMessage: async () => {
+      const id = get().activeAgentId;
+      if (!id) return;
+      const messages = await api.addAgentMessage(id, 'user');
+      set((s) => { s.agentMessages = messages; });
+    },
+
     updateAgentMessage: async (msgId: string, content: string) => {
       await api.updateAgentMessage(msgId, content);
       await get().loadAgentMessages();
@@ -448,6 +457,12 @@ export const useStore = create<AppState>()(
 
     deleteAgentMessage: async (msgId: string) => {
       await api.deleteAgentMessage(msgId);
+      await get().loadAgentMessages();
+    },
+
+    deleteAgentMessagePair: async (msgId1: string, msgId2: string) => {
+      await api.deleteAgentMessage(msgId1);
+      await api.deleteAgentMessage(msgId2);
       await get().loadAgentMessages();
     },
 

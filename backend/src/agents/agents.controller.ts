@@ -53,10 +53,13 @@ export class AgentsController {
   }
 
   @Post('agents/:id/messages')
-  addMessagePair(
+  addMessages(
     @Param('id') id: string,
-    @Body() body: { assistantContent?: string },
+    @Body() body: { assistantContent?: string; role?: 'user' | 'assistant' },
   ) {
+    if (body.role) {
+      return this.service.addMessage(id, body.role);
+    }
     return this.service.addMessagePair(id, body.assistantContent);
   }
 
