@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, Trash2 } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, X } from 'lucide-react';
 import { detectVariables } from '@/lib/interpolate';
 
 const NODE_CATEGORIES = [
@@ -249,9 +249,9 @@ export function ChainSidebar() {
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Conditions</Label>
                 {(config.conditions || []).map((cond: any, i: number) => (
-                  <div key={i} className="space-y-1 p-2 border border-border rounded bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <Input
+                  <div key={i} className="group rounded-md border border-border p-2.5 space-y-2">
+                    <div className="flex items-center gap-1">
+                      <input
                         value={cond.label}
                         onChange={(e) => {
                           const conditions = [...(config.conditions || [])];
@@ -259,16 +259,16 @@ export function ChainSidebar() {
                           updateNodeConfig({ conditions });
                         }}
                         placeholder="Label"
-                        className="h-6 text-xs flex-1 mr-1"
+                        className="flex-1 min-w-0 bg-transparent text-xs font-medium focus:outline-none placeholder:text-muted-foreground/40"
                       />
                       <button
                         onClick={() => {
                           const conditions = (config.conditions || []).filter((_: any, j: number) => j !== i);
                           updateNodeConfig({ conditions });
                         }}
-                        className="text-muted-foreground hover:text-foreground shrink-0"
+                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 transition-all shrink-0"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <X className="h-3 w-3" />
                       </button>
                     </div>
                     <Select
@@ -279,26 +279,27 @@ export function ChainSidebar() {
                         updateNodeConfig({ conditions });
                       }}
                     >
-                      <SelectTrigger className="h-6 text-xs">
+                      <SelectTrigger className="h-7 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="equals">equals</SelectItem>
                         <SelectItem value="contains">contains</SelectItem>
-                        <SelectItem value="startsWith">startsWith</SelectItem>
-                        <SelectItem value="endsWith">endsWith</SelectItem>
+                        <SelectItem value="startsWith">starts with</SelectItem>
+                        <SelectItem value="endsWith">ends with</SelectItem>
                         <SelectItem value="regex">regex</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Input
+                    <textarea
                       value={cond.value}
                       onChange={(e) => {
                         const conditions = [...(config.conditions || [])];
                         conditions[i] = { ...conditions[i], value: e.target.value };
                         updateNodeConfig({ conditions });
                       }}
-                      placeholder="Value"
-                      className="h-6 text-xs"
+                      placeholder="Match value..."
+                      rows={2}
+                      className="w-full text-xs font-mono bg-background border border-border rounded-md p-2 resize-y min-h-[3rem] focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/40"
                     />
                   </div>
                 ))}
