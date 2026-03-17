@@ -10,7 +10,6 @@ import '@xyflow/react/dist/style.css';
 import { useStore } from '@/store';
 import { VariableNode } from './VariableNode';
 import { PromptNode } from './PromptNode';
-import { ChainToolbar } from './ChainToolbar';
 
 const nodeTypes = {
   variable: VariableNode,
@@ -94,7 +93,6 @@ export function ChainCanvas() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <ChainToolbar />
       <div className="flex-1">
         <ReactFlow
           nodes={chainNodes}

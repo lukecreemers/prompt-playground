@@ -8,13 +8,17 @@ function VariableNodeComponent({ id, data }: { id: string; data: any }) {
   const removeNode = useStore((s) => s.removeChainNode);
   const nodeState = useStore((s) => s.chainNodeStates[id]);
 
+  const selectedChainNodeId = useStore((s) => s.selectedChainNodeId);
+
   const config = data.config || { text: '' };
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     updateConfig(id, { ...config, text: e.target.value });
   }, [id, config, updateConfig]);
 
-  const statusClass = nodeState?.status === 'completed' ? 'border-green-500'
+  const isSelected = selectedChainNodeId === id;
+  const statusClass = isSelected ? 'border-primary ring-2 ring-primary/30'
+    : nodeState?.status === 'completed' ? 'border-green-500'
     : nodeState?.status === 'running' ? 'border-purple-500'
     : nodeState?.status === 'error' ? 'border-red-500'
     : 'border-border';
@@ -40,7 +44,7 @@ function VariableNodeComponent({ id, data }: { id: string; data: any }) {
         type="source"
         position={Position.Right}
         id="output"
-        className="!w-3 !h-3 !bg-green-500 !border-2 !border-background"
+        className="!w-3 !h-3 !bg-primary !border-2 !border-background"
       />
     </div>
   );

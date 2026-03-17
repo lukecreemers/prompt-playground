@@ -10,6 +10,8 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
   const removeNode = useStore((s) => s.removeChainNode);
   const nodeState = useStore((s) => s.chainNodeStates[id]);
 
+  const selectedChainNodeId = useStore((s) => s.selectedChainNodeId);
+
   const config = data.config || { promptId: '' };
   const selectedPrompt = prompts.find((p) => p.id === config.promptId);
 
@@ -63,7 +65,9 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
     window.addEventListener('mouseup', handleMouseUp);
   }, [outputHeight]);
 
-  const statusClass = nodeState?.status === 'completed' ? 'border-green-500'
+  const isSelected = selectedChainNodeId === id;
+  const statusClass = isSelected ? 'border-primary ring-2 ring-primary/30'
+    : nodeState?.status === 'completed' ? 'border-green-500'
     : nodeState?.status === 'running' ? 'border-purple-500'
     : nodeState?.status === 'error' ? 'border-red-500'
     : 'border-border';
@@ -117,17 +121,17 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
 
       {/* Variable input handles */}
       {variables.length > 0 && (
-        <div className="relative">
+        <div className="relative pb-1">
           {variables.map((varName, i) => (
-            <div key={varName} className="flex items-center px-3 py-1 text-xs text-muted-foreground relative">
+            <div key={varName} className="flex items-center pl-4 pr-3 py-1.5 text-muted-foreground relative hover:bg-muted/30 transition-colors">
               <Handle
                 type="target"
                 position={Position.Left}
                 id={varName}
-                className="!w-3 !h-3 !bg-blue-500 !border-2 !border-background !left-[-6px]"
+                className="!w-3 !h-3 !bg-blue-500 !border-2 !border-background !left-[-4px]"
                 style={{ top: '50%', position: 'absolute' }}
               />
-              <span className="ml-2">{varName}</span>
+              <span className="font-mono text-[11px]">{varName}</span>
             </div>
           ))}
         </div>
@@ -138,7 +142,7 @@ function PromptNodeComponent({ id, data }: { id: string; data: any }) {
         type="source"
         position={Position.Right}
         id="output"
-        className="!w-3 !h-3 !bg-green-500 !border-2 !border-background"
+        className="!w-3 !h-3 !bg-primary !border-2 !border-background"
       />
     </div>
   );
