@@ -18,6 +18,7 @@ interface PromptBoxProps {
   variableValues?: Record<string, string>;
   hasEditableVariables?: boolean;
   onEditVariable?: (varName: string) => void;
+  allowNewVariables?: boolean;
   placeholder?: string;
   className?: string;
   minHeight?: string;
@@ -31,6 +32,7 @@ export function PromptBox({
   variableValues = {},
   hasEditableVariables = false,
   onEditVariable,
+  allowNewVariables = false,
   placeholder,
   className,
   minHeight = '300px',
@@ -70,7 +72,7 @@ export function PromptBox({
         horizontalRule: false,
         listItem: false,
       }),
-      VariableMention,
+      VariableMention.configure({ allowNewVariables }),
       VariableSuggestionExtension.configure({ suggestion }),
     ],
     content: fromPlainText(value),

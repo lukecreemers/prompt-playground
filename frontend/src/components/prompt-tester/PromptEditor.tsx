@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
-import { useDetectedVariables } from '@/hooks/useDetectedVariables';
 import { Settings, FileText } from 'lucide-react';
 import { TokenUsage, ModelInfo } from '@/types';
+import { detectVariables } from '@/lib/interpolate';
 import { PromptBox } from '@/components/prompt-box/PromptBox';
 
 function calcCosts(usage: TokenUsage, model: ModelInfo) {
@@ -27,7 +27,8 @@ export function PromptEditor() {
   const testerUsage = useStore((s) => s.testerUsage);
   const testerStatus = useStore((s) => s.testerStatus);
   const models = useStore((s) => s.models);
-  const detectedVars = useDetectedVariables();
+  const [text, setText] = useState(activePrompt?.content ?? '');
+  const detectedVars = useMemo(() => detectVariables(text), [text]);
 
   const inputCostInfo = useMemo(() => {
     if (!testerUsage || testerStatus !== 'completed' || !activePrompt) return null;
@@ -36,8 +37,6 @@ export function PromptEditor() {
     const { inputCost } = calcCosts(testerUsage, model);
     return { tokens: testerUsage.input_tokens, cost: inputCost };
   }, [testerUsage, testerStatus, activePrompt, models]);
-
-  const [text, setText] = useState(activePrompt?.content ?? '');
 
   const prevContent = useRef(activePrompt?.content);
   useEffect(() => {
@@ -99,6 +98,7 @@ export function PromptEditor() {
           variableValues={testerVariables}
           hasEditableVariables={true}
           onEditVariable={handleEditVariable}
+          allowNewVariables={true}
           className="absolute inset-0"
         />
       </div>
