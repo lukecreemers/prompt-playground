@@ -116,7 +116,7 @@ export function TestCaseToolbar() {
       <Button
         size="sm"
         variant="default"
-        className="h-7 text-xs gap-1.5 shadow-sm shadow-primary/15"
+        className="h-7 text-xs gap-1.5"
         onClick={() => runBatch(false, hasSelected ? selectedKeys : allIds)}
         disabled={allIds.length === 0}
       >
