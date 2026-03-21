@@ -59,11 +59,9 @@ export class BatchRunnerService {
                 switch (chunk.type) {
                   case 'text_delta':
                     fullText += chunk.content;
-                    send('case_text', { testCaseId: tc.id, content: chunk.content });
                     break;
                   case 'thinking_delta':
                     fullThinking += chunk.content;
-                    send('case_thinking', { testCaseId: tc.id, content: chunk.content });
                     break;
                   case 'error':
                     reject(new Error(chunk.content));
@@ -81,7 +79,7 @@ export class BatchRunnerService {
             status: 'completed',
           });
 
-          send('case_done', { testCaseId: tc.id, output: fullText });
+          send('case_done', { testCaseId: tc.id, output: fullText, thinking: fullThinking || null });
         } catch (err: any) {
           await this.tcRepo.update(tc.id, { status: 'failed', output: err.message });
           send('case_error', { testCaseId: tc.id, error: err.message });

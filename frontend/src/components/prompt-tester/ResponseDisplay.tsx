@@ -3,6 +3,7 @@ import { useStore } from '@/store';
 import { ThinkingBlock } from './ThinkingBlock';
 import { MarkdownOutput } from './MarkdownOutput';
 import { Loader2, Play } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { TokenUsage, ModelInfo } from '@/types';
 
 function calcCosts(usage: TokenUsage, model: ModelInfo) {
@@ -35,7 +36,10 @@ export function ResponseDisplay() {
   return (
     <div className="flex-1 flex flex-col p-5 overflow-auto">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="section-label">Response</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="section-label">Response</h3>
+          {response && <CopyButton text={response} />}
+        </div>
         {status === 'running' && (
           <div className="flex items-center gap-1.5 text-xs text-primary font-medium">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

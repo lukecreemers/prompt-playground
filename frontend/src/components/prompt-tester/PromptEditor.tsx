@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Settings, FileText } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { TokenUsage, ModelInfo } from '@/types';
 import { detectVariables } from '@/lib/interpolate';
 import { PromptBox } from '@/components/prompt-box/PromptBox';
@@ -77,7 +78,10 @@ export function PromptEditor() {
   return (
     <div className="flex-1 flex flex-col p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="section-label">Prompt Template</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="section-label">Prompt Template</h3>
+          <CopyButton text={text} />
+        </div>
         <Button
           variant="ghost"
           size="sm"

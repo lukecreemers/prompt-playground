@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { detectVariables } from '@/lib/interpolate';
 import { PromptBox } from '@/components/prompt-box/PromptBox';
 
@@ -55,7 +56,10 @@ export function SystemPromptEditor() {
   return (
     <div className="p-4 pb-2">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="section-label">System Prompt</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="section-label">System Prompt</h3>
+          <CopyButton text={text} />
+        </div>
         <Button
           variant="ghost"
           size="sm"

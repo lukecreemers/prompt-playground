@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, Brain } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface ThinkingBlockProps {
   content: string;
@@ -20,6 +21,9 @@ export function ThinkingBlock({ content }: ThinkingBlockProps) {
       </button>
       {open && (
         <div className="px-3 pb-3">
+          <div className="flex justify-end mb-1">
+            <CopyButton text={content} />
+          </div>
           <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-mono overflow-auto max-h-96 leading-relaxed">
             {content}
           </pre>

@@ -46,13 +46,9 @@ export function TestCaseToolbar() {
             case 'case_start':
               s.setTestCaseStatus(data.testCaseId, 'running');
               break;
-            case 'case_text':
-              s.appendTestCaseOutput(data.testCaseId, 'output', data.content);
-              break;
-            case 'case_thinking':
-              s.appendTestCaseOutput(data.testCaseId, 'thinking', data.content);
-              break;
             case 'case_done':
+              s.setTestCaseOutput(data.testCaseId, 'output', data.output);
+              s.setTestCaseOutput(data.testCaseId, 'thinking', data.thinking);
               s.setTestCaseStatus(data.testCaseId, 'completed');
               break;
             case 'case_error':

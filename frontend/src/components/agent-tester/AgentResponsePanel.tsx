@@ -4,6 +4,7 @@ import { ThinkingBlock } from '@/components/prompt-tester/ThinkingBlock';
 import { MarkdownOutput } from '@/components/prompt-tester/MarkdownOutput';
 import { Button } from '@/components/ui/button';
 import { Loader2, Play, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { TokenUsage, ModelInfo } from '@/types';
 
 function calcCosts(usage: TokenUsage, model: ModelInfo) {
@@ -42,7 +43,10 @@ export function AgentResponsePanel() {
   return (
     <div className="flex-1 flex flex-col p-5 overflow-auto">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="section-label">Response</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="section-label">Response</h3>
+          {response && <CopyButton text={response} />}
+        </div>
         <div className="flex items-center gap-2">
           {hasGenerations && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">

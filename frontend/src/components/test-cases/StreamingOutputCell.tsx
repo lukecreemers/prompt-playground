@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '@/store';
+import { Loader2 } from 'lucide-react';
 import { CellDetailModal } from './CellDetailModal';
 
 interface StreamingOutputCellProps {
@@ -35,8 +36,9 @@ export const StreamingOutputCell = React.memo(function StreamingOutputCell({
       >
         {truncated || (
           (status === 'running' || (field === 'evalResult' && evalStatus === 'running')) ? (
-            <span className="text-primary/60 inline-flex items-center">
-              <span className="animate-pulse">|</span>
+            <span className="text-primary/60 inline-flex items-center gap-1.5">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="text-xs">Running...</span>
             </span>
           ) : (
             <span className="text-muted-foreground/30">&mdash;</span>

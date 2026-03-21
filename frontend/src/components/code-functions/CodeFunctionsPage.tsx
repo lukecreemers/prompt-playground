@@ -32,37 +32,40 @@ export function CodeFunctionsPage() {
   const outputs: string[] = JSON.parse(activeCodeFunction.outputs || '[]');
 
   return (
-    <div className="flex-1 flex min-h-0">
-      {/* Left: Editor */}
-      <div className="w-1/2 flex flex-col min-h-0 border-r border-border">
-        <div className="p-4 space-y-4 overflow-y-auto shrink-0">
-          <InputOutputEditor
-            label="Inputs"
-            items={inputs}
-            onChange={handleInputsChange}
-            color="bg-blue-500/10 text-blue-500"
-          />
-          <InputOutputEditor
-            label="Outputs"
-            items={outputs}
-            onChange={handleOutputsChange}
-            color="bg-green-500/10 text-green-500"
-          />
-        </div>
-        <div className="px-4 pb-1">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Code</span>
-          <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-            Access inputs via <code className="text-zinc-400">inputs.name</code>. Return an object with output keys.
-          </p>
-        </div>
-        <div className="flex-1 px-4 pb-4 min-h-0 flex flex-col">
-          <CodeEditor value={activeCodeFunction.code} onChange={handleCodeChange} />
-        </div>
-      </div>
+    <div className="h-full p-3">
+      <div className="h-full flex min-h-0 surface-panel overflow-hidden">
+        {/* Left: Editor */}
+        <div className="w-[60%] flex flex-col min-h-0 border-r border-border">
+          {/* Inputs & Outputs */}
+          <div className="px-4 py-2.5 space-y-2 shrink-0 border-b border-border">
+            <InputOutputEditor
+              label="Inputs"
+              items={inputs}
+              onChange={handleInputsChange}
+              color="bg-accent text-accent-foreground"
+            />
+            <InputOutputEditor
+              label="Outputs"
+              items={outputs}
+              onChange={handleOutputsChange}
+              color="bg-accent text-accent-foreground"
+            />
+          </div>
 
-      {/* Right: Test panel */}
-      <div className="w-1/2 flex flex-col min-h-0">
-        <TestPanel />
+          {/* Monaco editor - takes all remaining space */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <CodeEditor
+              functionId={activeCodeFunction.id}
+              value={activeCodeFunction.code}
+              onChange={handleCodeChange}
+            />
+          </div>
+        </div>
+
+        {/* Right: Test panel */}
+        <div className="w-[40%] flex flex-col min-h-0">
+          <TestPanel />
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { AgentMessage } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Trash2, User, Bot } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { detectVariables } from '@/lib/interpolate';
 import { PromptBox } from '@/components/prompt-box/PromptBox';
 
@@ -72,7 +73,9 @@ export function MessageCard({ message, onDeleteHover, onDelete, deletable = true
             <><Bot className="h-3 w-3" /> Assistant</>
           )}
         </div>
-        {deletable && (
+        <div className="flex items-center gap-0.5">
+          <CopyButton text={message.content} />
+          {deletable && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -91,6 +94,7 @@ export function MessageCard({ message, onDeleteHover, onDelete, deletable = true
             </Tooltip>
           </TooltipProvider>
         )}
+        </div>
       </div>
       <PromptBox
         value={text}
