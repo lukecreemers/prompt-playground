@@ -3,10 +3,13 @@ import { useStore } from '@/store';
 import { InputOutputEditor } from './InputOutputEditor';
 import { CodeEditor } from './CodeEditor';
 import { TestPanel } from './TestPanel';
+import { AiPromptBar } from './AiPromptBar';
+import { IoChangesBanner } from './IoChangesBanner';
 
 export function CodeFunctionsPage() {
   const activeCodeFunction = useStore((s) => s.activeCodeFunction);
   const updateCodeFunction = useStore((s) => s.updateCodeFunction);
+  const codeAiProposal = useStore((s) => s.codeAiProposal);
 
   const handleInputsChange = useCallback((items: string[]) => {
     updateCodeFunction({ inputs: JSON.stringify(items) });
@@ -31,6 +34,12 @@ export function CodeFunctionsPage() {
   const inputs: string[] = JSON.parse(activeCodeFunction.inputs || '[]');
   const outputs: string[] = JSON.parse(activeCodeFunction.outputs || '[]');
 
+  // Check if proposal has I/O changes
+  const hasIoChanges = codeAiProposal && (
+    JSON.stringify(codeAiProposal.inputs) !== JSON.stringify(inputs) ||
+    JSON.stringify(codeAiProposal.outputs) !== JSON.stringify(outputs)
+  );
+
   return (
     <div className="h-full p-3">
       <div className="h-full flex min-h-0 surface-panel overflow-hidden">
@@ -52,6 +61,9 @@ export function CodeFunctionsPage() {
             />
           </div>
 
+          {/* I/O changes banner (conditional) */}
+          {hasIoChanges && <IoChangesBanner />}
+
           {/* Monaco editor - takes all remaining space */}
           <div className="flex-1 min-h-0 flex flex-col">
             <CodeEditor
@@ -60,6 +72,9 @@ export function CodeFunctionsPage() {
               onChange={handleCodeChange}
             />
           </div>
+
+          {/* AI prompt bar - pinned to bottom */}
+          <AiPromptBar />
         </div>
 
         {/* Right: Test panel */}

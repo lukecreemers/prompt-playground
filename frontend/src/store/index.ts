@@ -4,6 +4,14 @@ import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage, Chain, Ch
 import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import { api } from '../lib/api';
+import { createSSEStream } from '../lib/sse';
+
+interface CodeAiProposal {
+  code: string;
+  inputs: string[];
+  outputs: string[];
+  explanation: string;
+}
 
 interface AppState {
   // Prompts
@@ -65,6 +73,14 @@ interface AppState {
   codeFunctionTestResult: { outputs: Record<string, string> } | null;
   codeFunctionTestError: string | null;
   codeFunctionTestStatus: 'idle' | 'running' | 'completed' | 'error';
+
+  // Code AI Assistant
+  codeAiHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+  codeAiStatus: 'idle' | 'running' | 'completed' | 'error';
+  codeAiAbortController: AbortController | null;
+  codeAiModel: string;
+  codeAiProposal: CodeAiProposal | null;
+  codeAiError: string | null;
 
   // Sidebar page
   activePage: 'prompt-tester' | 'agent-tester' | 'chains' | 'code-functions' | 'benchmarks';
@@ -153,6 +169,12 @@ interface AppState {
   deleteCodeFunction: (id: string) => Promise<void>;
   setCodeFunctionTestInput: (key: string, value: string) => void;
   runCodeFunctionTest: () => Promise<void>;
+  sendCodeAiInstruction: (instruction: string) => void;
+  cancelCodeAi: () => void;
+  acceptCodeAiProposal: () => void;
+  rejectCodeAiProposal: () => void;
+  setCodeAiModel: (model: string) => void;
+  resetCodeAiState: () => void;
 
   // Chain actions
   loadChains: () => Promise<void>;
@@ -218,6 +240,12 @@ export const useStore = create<AppState>()(
     codeFunctionTestResult: null,
     codeFunctionTestError: null,
     codeFunctionTestStatus: 'idle',
+    codeAiHistory: [],
+    codeAiStatus: 'idle',
+    codeAiAbortController: null,
+    codeAiModel: 'claude-sonnet-4-6',
+    codeAiProposal: null,
+    codeAiError: null,
     chains: [],
     activeChainId: null,
     activeChain: null,
@@ -640,7 +668,15 @@ export const useStore = create<AppState>()(
         s.codeFunctionTestResult = null;
         s.codeFunctionTestError = null;
         s.codeFunctionTestStatus = 'idle';
+        // Reset AI state when switching functions
+        s.codeAiHistory = [];
+        s.codeAiStatus = 'idle';
+        s.codeAiProposal = null;
+        s.codeAiError = null;
       });
+      // Abort any in-flight AI request
+      get().codeAiAbortController?.abort();
+      set((s) => { s.codeAiAbortController = null; });
     },
 
     createCodeFunction: async () => {
@@ -702,6 +738,125 @@ export const useStore = create<AppState>()(
           s.codeFunctionTestError = err.message;
         });
       }
+    },
+
+    sendCodeAiInstruction: (instruction: string) => {
+      const state = get();
+      const fn = state.activeCodeFunction;
+      if (!fn) return;
+
+      const controller = new AbortController();
+      const currentInputs: string[] = JSON.parse(fn.inputs || '[]');
+      const currentOutputs: string[] = JSON.parse(fn.outputs || '[]');
+      const history = [...state.codeAiHistory];
+
+      set((s) => {
+        s.codeAiStatus = 'running';
+        s.codeAiAbortController = controller;
+        s.codeAiProposal = null;
+        s.codeAiError = null;
+        s.codeAiHistory.push({ role: 'user', content: instruction });
+      });
+
+      let fullText = '';
+
+      createSSEStream(
+        `/api/code-functions/${fn.id}/ai-assist`,
+        {
+          instruction,
+          currentCode: fn.code || '',
+          inputs: currentInputs,
+          outputs: currentOutputs,
+          history,
+          model: state.codeAiModel,
+        },
+        {
+          onEvent: (event, data) => {
+            if (event === 'text') {
+              fullText += data.content;
+            } else if (event === 'done') {
+              try {
+                // Try to parse the full text as JSON
+                const parsed = JSON.parse(fullText);
+                set((s) => {
+                  s.codeAiProposal = {
+                    code: parsed.code || '',
+                    inputs: parsed.inputs || currentInputs,
+                    outputs: parsed.outputs || currentOutputs,
+                    explanation: parsed.explanation || 'Changes applied',
+                  };
+                  s.codeAiStatus = 'completed';
+                  s.codeAiHistory.push({ role: 'assistant', content: fullText });
+                });
+              } catch {
+                set((s) => {
+                  s.codeAiError = 'Failed to parse AI response as JSON';
+                  s.codeAiStatus = 'error';
+                });
+              }
+            } else if (event === 'error') {
+              set((s) => {
+                s.codeAiError = data.message || 'AI request failed';
+                s.codeAiStatus = 'error';
+              });
+            }
+          },
+          onError: (err) => {
+            set((s) => {
+              s.codeAiError = err.message || 'Connection error';
+              s.codeAiStatus = 'error';
+            });
+          },
+          onClose: () => {
+            set((s) => { s.codeAiAbortController = null; });
+          },
+        },
+        controller.signal,
+      );
+    },
+
+    cancelCodeAi: () => {
+      get().codeAiAbortController?.abort();
+      set((s) => {
+        s.codeAiStatus = 'idle';
+        s.codeAiAbortController = null;
+      });
+    },
+
+    acceptCodeAiProposal: async () => {
+      const proposal = get().codeAiProposal;
+      if (!proposal) return;
+      await get().updateCodeFunction({
+        code: proposal.code,
+        inputs: JSON.stringify(proposal.inputs),
+        outputs: JSON.stringify(proposal.outputs),
+      });
+      set((s) => {
+        s.codeAiProposal = null;
+        s.codeAiStatus = 'idle';
+      });
+    },
+
+    rejectCodeAiProposal: () => {
+      set((s) => {
+        s.codeAiProposal = null;
+        s.codeAiStatus = 'idle';
+      });
+    },
+
+    setCodeAiModel: (model: string) => {
+      set((s) => { s.codeAiModel = model; });
+    },
+
+    resetCodeAiState: () => {
+      get().codeAiAbortController?.abort();
+      set((s) => {
+        s.codeAiHistory = [];
+        s.codeAiStatus = 'idle';
+        s.codeAiAbortController = null;
+        s.codeAiProposal = null;
+        s.codeAiError = null;
+      });
     },
 
     // Chain actions

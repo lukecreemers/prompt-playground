@@ -1,5 +1,8 @@
 import { useRef, useCallback, useEffect, useSyncExternalStore } from 'react';
 import Editor, { type BeforeMount, type OnMount, useMonaco } from '@monaco-editor/react';
+import type * as Monaco from 'monaco-editor';
+import { useStore } from '@/store';
+import { computeDiff, buildMergedView, getDecorations } from '@/lib/diff-utils';
 
 interface CodeEditorProps {
   functionId: string;
@@ -61,7 +64,6 @@ const handleBeforeMount: BeforeMount = (monaco) => {
   });
 };
 
-// Subscribe to the `dark` class on <html> so we catch every toggle, even if this component wasn't mounted at the time.
 function subscribeToTheme(cb: () => void) {
   const observer = new MutationObserver(cb);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
@@ -73,19 +75,75 @@ function getIsDark() {
 
 export function CodeEditor({ functionId, value, onChange }: CodeEditorProps) {
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const decorationsRef = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  const originalCodeRef = useRef<string>('');
   const isDark = useSyncExternalStore(subscribeToTheme, getIsDark);
   const monaco = useMonaco();
   const monacoTheme = isDark ? 'app-dark' : 'app-light';
 
-  // Switch theme reactively when user toggles light/dark
+  const codeAiProposal = useStore((s) => s.codeAiProposal);
+
   useEffect(() => {
     if (monaco) {
       monaco.editor.setTheme(monacoTheme);
     }
   }, [monaco, monacoTheme]);
 
+  // Apply diff decorations when proposal exists
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || !monaco) return;
+
+    if (codeAiProposal) {
+      // Capture original code once when proposal first arrives
+      originalCodeRef.current = value || '';
+
+      const diffLines = computeDiff(originalCodeRef.current, codeAiProposal.code);
+      const mergedView = buildMergedView(diffLines);
+      const { added, removed } = getDecorations(diffLines);
+
+      editor.setValue(mergedView);
+      editor.updateOptions({ readOnly: true });
+
+      const decorations: Monaco.editor.IModelDeltaDecoration[] = [
+        ...added.map((lineNum) => ({
+          range: new monaco.Range(lineNum, 1, lineNum, 1),
+          options: {
+            isWholeLine: true,
+            className: 'diff-line-added',
+            glyphMarginClassName: 'diff-glyph-added',
+          },
+        })),
+        ...removed.map((lineNum) => ({
+          range: new monaco.Range(lineNum, 1, lineNum, 1),
+          options: {
+            isWholeLine: true,
+            className: 'diff-line-removed',
+            glyphMarginClassName: 'diff-glyph-removed',
+          },
+        })),
+      ];
+
+      if (decorationsRef.current) {
+        decorationsRef.current.clear();
+      }
+      decorationsRef.current = editor.createDecorationsCollection(decorations);
+    } else {
+      // Proposal cleared - restore editor
+      if (decorationsRef.current) {
+        decorationsRef.current.clear();
+        decorationsRef.current = null;
+      }
+      editor.setValue(value || '');
+      editor.updateOptions({ readOnly: false });
+    }
+  }, [codeAiProposal, monaco]); // intentionally excludes `value` -- diff is based on snapshot at proposal time
+
   const handleChange = useCallback((newValue: string | undefined) => {
     if (newValue === undefined) return;
+    // Don't persist changes while in diff review mode
+    if (useStore.getState().codeAiProposal) return;
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => {
       onChange(newValue);
@@ -93,6 +151,7 @@ export function CodeEditor({ functionId, value, onChange }: CodeEditorProps) {
   }, [onChange]);
 
   const handleMount: OnMount = (editor) => {
+    editorRef.current = editor;
     editor.focus();
   };
 
@@ -126,6 +185,7 @@ export function CodeEditor({ functionId, value, onChange }: CodeEditorProps) {
           folding: true,
           contextmenu: true,
           suggestOnTriggerCharacters: true,
+          glyphMargin: true,
         }}
       />
     </div>

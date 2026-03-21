@@ -178,6 +178,32 @@ body {
   letter-spacing: 0.08em;
 }
 
+/* Diff decorations */
+.diff-line-removed {
+  background: rgba(248, 81, 73, 0.15) !important;
+}
+.diff-line-added {
+  background: rgba(63, 185, 80, 0.15) !important;
+}
+.dark .diff-line-removed {
+  background: rgba(248, 81, 73, 0.2) !important;
+}
+.dark .diff-line-added {
+  background: rgba(63, 185, 80, 0.2) !important;
+}
+.diff-glyph-removed {
+  background: rgb(248, 81, 73);
+  width: 3px !important;
+  margin-left: 3px;
+  border-radius: 1px;
+}
+.diff-glyph-added {
+  background: rgb(63, 185, 80);
+  width: 3px !important;
+  margin-left: 3px;
+  border-radius: 1px;
+}
+
 /* Focus ring */
 *:focus-visible {
   outline: none;
