@@ -12,7 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, ArrowUpRight, Inbox } from 'lucide-react';
+import { Trash2, ArrowUpRight, Inbox, Copy } from 'lucide-react';
+import { interpolate } from '@/lib/interpolate';
 import { EditableCell } from './EditableCell';
 import { StreamingOutputCell } from './StreamingOutputCell';
 import { cn } from '@/lib/utils';
@@ -44,9 +45,26 @@ function RowActions({ row }: { row: TestCase }) {
   const deleteTestCase = useStore((s) => s.deleteTestCase);
   const setTesterVariables = useStore((s) => s.setTesterVariables);
   const setActiveSubTab = useStore((s) => s.setActiveSubTab);
+  const activePrompt = useStore((s) => s.activePrompt);
+
+  const copyFilledPrompt = () => {
+    if (!activePrompt?.content) return;
+    const vars: Record<string, string> = JSON.parse(row.variables || '{}');
+    const filled = interpolate(activePrompt.content, vars);
+    navigator.clipboard.writeText(filled);
+  };
 
   return (
     <div className="flex items-center gap-0.5">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+        title="Copy filled prompt"
+        onClick={copyFilledPrompt}
+      >
+        <Copy className="h-3.5 w-3.5" />
+      </Button>
       <Button
         variant="ghost"
         size="sm"
@@ -73,7 +91,7 @@ function RowActions({ row }: { row: TestCase }) {
 }
 
 // Fixed-width column totals
-const FIXED_COL_WIDTH = { select: 40, status: 80, actions: 70 };
+const FIXED_COL_WIDTH = { select: 40, status: 80, actions: 100 };
 const FIXED_TOTAL = FIXED_COL_WIDTH.select + FIXED_COL_WIDTH.status + FIXED_COL_WIDTH.actions;
 
 export function TestCaseTable() {

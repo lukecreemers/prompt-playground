@@ -8,7 +8,8 @@ import {
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { CsvUploadButton } from './CsvUploadButton';
-import { Play, FlaskConical, Plus, Trash2, MoreVertical } from 'lucide-react';
+import { Play, FlaskConical, Plus, Trash2, MoreVertical, Download } from 'lucide-react';
+import Papa from 'papaparse';
 import { createSSEStream } from '@/lib/sse';
 
 export function TestCaseToolbar() {
@@ -103,6 +104,41 @@ export function TestCaseToolbar() {
     );
   };
 
+  const downloadCsv = () => {
+    const cases = Object.values(testCases);
+    if (cases.length === 0) return;
+
+    // Collect all variable keys
+    const varKeys = new Set<string>();
+    const parsed = cases.map((tc) => {
+      const vars: Record<string, string> = tc.variables ? JSON.parse(tc.variables) : {};
+      Object.keys(vars).forEach((k) => varKeys.add(k));
+      return { vars, tc };
+    });
+
+    const columns = [...varKeys];
+    const rows = parsed.map(({ vars, tc }) => {
+      const row: Record<string, string> = {};
+      for (const key of columns) {
+        row[key] = vars[key] || '';
+      }
+      row['output'] = tc.output || '';
+      if (evalEnabled) {
+        row['evalResult'] = tc.evalResult || '';
+      }
+      return row;
+    });
+
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `test-cases-${activePrompt?.name || 'export'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const allIds = Object.keys(testCases);
   const selectedKeys = Object.keys(selectedIds);
   const hasSelected = selectedKeys.length > 0;
@@ -178,6 +214,13 @@ export function TestCaseToolbar() {
           >
             <FlaskConical className="h-4 w-4 mr-2" />
             {evalEnabled ? 'Disable Eval' : 'Enable Eval'}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={downloadCsv}
+            disabled={allIds.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Download CSV
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
