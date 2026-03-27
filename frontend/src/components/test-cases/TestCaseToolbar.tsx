@@ -30,6 +30,7 @@ export function TestCaseToolbar() {
 
     // Reset statuses
     const store = useStore.getState();
+    store.clearTestCaseRunData();
     for (const id of testCaseIds) {
       store.setTestCaseStatus(id, 'running');
       store.setTestCaseOutput(id, 'output', '');
@@ -51,6 +52,7 @@ export function TestCaseToolbar() {
               s.setTestCaseOutput(data.testCaseId, 'output', data.output);
               s.setTestCaseOutput(data.testCaseId, 'thinking', data.thinking);
               s.setTestCaseStatus(data.testCaseId, 'completed');
+              s.setTestCaseRunData(data.testCaseId, { usage: data.usage, durationMs: data.durationMs });
               break;
             case 'case_error':
               s.setTestCaseStatus(data.testCaseId, 'failed');

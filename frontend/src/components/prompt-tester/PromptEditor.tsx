@@ -8,8 +8,8 @@ import { detectVariables } from '@/lib/interpolate';
 import { PromptBox } from '@/components/prompt-box/PromptBox';
 
 function calcCosts(usage: TokenUsage, model: ModelInfo) {
-  const inputCost = (usage.input_tokens * model.inputTokenCost) / 1_000_000;
-  const outputCost = (usage.output_tokens * model.outputTokenCost) / 1_000_000;
+  const inputCost = ((usage.input_tokens || 0) * model.inputTokenCost) / 1_000_000;
+  const outputCost = ((usage.output_tokens || 0) * model.outputTokenCost) / 1_000_000;
   return { inputCost, outputCost, totalCost: inputCost + outputCost };
 }
 

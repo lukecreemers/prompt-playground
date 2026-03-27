@@ -13,14 +13,14 @@ interface CellDetailModalProps {
 export function CellDetailModal({ open, onOpenChange, title, content }: CellDetailModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh]">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] max-w-[95vw] h-[90vh] max-h-[90vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <div className="flex items-center gap-2">
             <DialogTitle>{title}</DialogTitle>
             <CopyButton text={content} />
           </div>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh]">
+        <ScrollArea className="flex-1 min-h-0">
           <div className="p-6">
             <MarkdownOutput content={content} />
           </div>

@@ -91,8 +91,8 @@ function RowActions({ row }: { row: TestCase }) {
 }
 
 // Fixed-width column totals
-const FIXED_COL_WIDTH = { select: 40, status: 80, actions: 100 };
-const FIXED_TOTAL = FIXED_COL_WIDTH.select + FIXED_COL_WIDTH.status + FIXED_COL_WIDTH.actions;
+const FIXED_COL_WIDTH = { select: 40, status: 80, actions: 100, cost: 75, time: 65 };
+const FIXED_TOTAL = FIXED_COL_WIDTH.select + FIXED_COL_WIDTH.status + FIXED_COL_WIDTH.actions + FIXED_COL_WIDTH.cost + FIXED_COL_WIDTH.time;
 
 export function TestCaseTable() {
   const testCases = useStore((s) => s.testCases);
@@ -103,6 +103,8 @@ export function TestCaseTable() {
   const detectedVars = useDetectedVariables();
   const evalEnabled = activePrompt?.evalPrompt !== null && activePrompt?.evalPrompt !== undefined;
 
+  const testCaseRunData = useStore((s) => s.testCaseRunData);
+  const models = useStore((s) => s.models);
   const data = useMemo(() => Object.values(testCases), [testCases]);
 
   // Measure container once to compute initial flex column sizes
@@ -172,15 +174,15 @@ export function TestCaseTable() {
     const availableWidth = initialWidth - FIXED_TOTAL - 2; // 2px for rounding
     if (availableWidth <= 0) return null; // not measured yet
 
-    // Count flex columns: variables + output + (eval if enabled)
-    const flexCount = detectedVars.length + 1 + (evalEnabled ? 1 : 0);
-    // Output gets 1.5x weight, eval gets 1x, each variable gets 1x
-    const totalWeight = detectedVars.length + 1.5 + (evalEnabled ? 1 : 0);
+    // Count flex columns: variables + output + thinking + (eval if enabled)
+    // Output gets 1.5x weight, thinking gets 1x, eval gets 1x, each variable gets 1x
+    const totalWeight = detectedVars.length + 1.5 + 1 + (evalEnabled ? 1 : 0);
     const perUnit = availableWidth / totalWeight;
 
     return {
       variable: Math.max(100, Math.floor(perUnit)),
       output: Math.max(120, Math.floor(perUnit * 1.5)),
+      thinking: Math.max(100, Math.floor(perUnit)),
       eval: Math.max(120, Math.floor(perUnit)),
     };
   }, [initialWidth, detectedVars.length, evalEnabled]);
@@ -227,6 +229,46 @@ export function TestCaseTable() {
       minSize: 120,
     });
 
+    cols.push({
+      id: 'thinking',
+      header: 'Thinking',
+      cell: ({ row }) => (
+        <StreamingOutputCell testCaseId={row.original.id} field="thinking" />
+      ),
+      size: flexColSizes?.thinking ?? 200,
+      minSize: 100,
+    });
+
+    cols.push({
+      id: 'cost',
+      header: 'Cost',
+      cell: ({ row }) => {
+        const rd = testCaseRunData[row.original.id];
+        if (!rd?.usage) return <span className="text-muted-foreground/30">&mdash;</span>;
+        const model = models.find((m) => m.id === activePrompt?.modelName);
+        if (!model) return <span className="text-muted-foreground/30">&mdash;</span>;
+        const cost = ((rd.usage.input_tokens || 0) * model.inputTokenCost + (rd.usage.output_tokens || 0) * model.outputTokenCost) / 1_000_000;
+        return <span className="text-xs font-mono text-muted-foreground">${cost.toFixed(4)}</span>;
+      },
+      size: FIXED_COL_WIDTH.cost,
+      minSize: 60,
+      enableResizing: false,
+    });
+
+    cols.push({
+      id: 'time',
+      header: 'Time',
+      cell: ({ row }) => {
+        const rd = testCaseRunData[row.original.id];
+        if (!rd?.durationMs) return <span className="text-muted-foreground/30">&mdash;</span>;
+        const secs = (rd.durationMs / 1000).toFixed(1);
+        return <span className="text-xs font-mono text-muted-foreground">{secs}s</span>;
+      },
+      size: FIXED_COL_WIDTH.time,
+      minSize: 50,
+      enableResizing: false,
+    });
+
     if (evalEnabled) {
       cols.push({
         id: 'evalResult',
@@ -265,7 +307,7 @@ export function TestCaseTable() {
     });
 
     return cols;
-  }, [detectedVars, evalEnabled, selectedIds, handleSelectPointerDown, handleSelectPointerEnter, flexColSizes]);
+  }, [detectedVars, evalEnabled, selectedIds, handleSelectPointerDown, handleSelectPointerEnter, flexColSizes, testCaseRunData, models, activePrompt]);
 
   const table = useReactTable({
     data,

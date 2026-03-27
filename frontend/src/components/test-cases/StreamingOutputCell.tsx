@@ -5,7 +5,7 @@ import { CellDetailModal } from './CellDetailModal';
 
 interface StreamingOutputCellProps {
   testCaseId: string;
-  field: 'output' | 'evalResult';
+  field: 'output' | 'evalResult' | 'thinking';
 }
 
 export const StreamingOutputCell = React.memo(function StreamingOutputCell({
@@ -27,6 +27,7 @@ export const StreamingOutputCell = React.memo(function StreamingOutputCell({
   const [modalOpen, setModalOpen] = useState(false);
 
   const truncated = value.length > 100 ? value.slice(0, 100) + '...' : value;
+  const titleMap = { output: 'Output', evalResult: 'Eval Result', thinking: 'Thinking' };
 
   return (
     <>
@@ -48,7 +49,7 @@ export const StreamingOutputCell = React.memo(function StreamingOutputCell({
       <CellDetailModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        title={field === 'output' ? 'Output' : 'Eval Result'}
+        title={titleMap[field]}
         content={value}
       />
     </>

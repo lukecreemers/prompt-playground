@@ -26,6 +26,7 @@ interface AppState {
 
   // Test cases
   testCases: Record<string, TestCase>;
+  testCaseRunData: Record<string, { usage?: { input_tokens: number; output_tokens: number }; durationMs?: number }>;
   selectedTestCaseIds: Record<string, true>;
 
   // Stream state
@@ -111,6 +112,8 @@ interface AppState {
   selectAllTestCases: () => void;
   deselectAllTestCases: () => void;
   setTestCaseOutput: (id: string, field: 'output' | 'thinking' | 'evalResult', value: string) => void;
+  setTestCaseRunData: (id: string, data: { usage?: { input_tokens: number; output_tokens: number }; durationMs?: number }) => void;
+  clearTestCaseRunData: () => void;
   appendTestCaseOutput: (id: string, field: 'output' | 'thinking', content: string) => void;
   setTestCaseStatus: (id: string, status: TestCase['status']) => void;
   setTestCaseEvalStatus: (id: string, evalStatus: TestCase['evalStatus']) => void;
@@ -212,6 +215,7 @@ export const useStore = create<AppState>()(
     drawerOpen: false,
     focusVariable: null,
     testCases: {},
+    testCaseRunData: {},
     selectedTestCaseIds: {},
     testerResponse: '',
     testerThinking: '',
@@ -415,6 +419,14 @@ export const useStore = create<AppState>()(
           (s.testCases[tcId] as any)[field] = value;
         }
       });
+    },
+
+    setTestCaseRunData: (tcId, data) => {
+      set((s) => { s.testCaseRunData[tcId] = data; });
+    },
+
+    clearTestCaseRunData: () => {
+      set((s) => { s.testCaseRunData = {}; });
     },
 
     appendTestCaseOutput: (tcId, field, content) => {

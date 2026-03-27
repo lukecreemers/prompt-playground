@@ -51,6 +51,8 @@ export class BatchRunnerService {
         try {
           let fullText = '';
           let fullThinking = '';
+          let usage: any = null;
+          const startTime = Date.now();
 
           await new Promise<void>((resolve, reject) => {
             this.ai.stream(request).subscribe({
@@ -63,6 +65,9 @@ export class BatchRunnerService {
                   case 'thinking_delta':
                     fullThinking += chunk.content;
                     break;
+                  case 'done':
+                    usage = chunk.metadata?.usage || null;
+                    break;
                   case 'error':
                     reject(new Error(chunk.content));
                     break;
@@ -73,13 +78,15 @@ export class BatchRunnerService {
             });
           });
 
+          const durationMs = Date.now() - startTime;
+
           await this.tcRepo.update(tc.id, {
             output: fullText,
             thinking: fullThinking || null,
             status: 'completed',
           });
 
-          send('case_done', { testCaseId: tc.id, output: fullText, thinking: fullThinking || null });
+          send('case_done', { testCaseId: tc.id, output: fullText, thinking: fullThinking || null, usage, durationMs });
         } catch (err: any) {
           await this.tcRepo.update(tc.id, { status: 'failed', output: err.message });
           send('case_error', { testCaseId: tc.id, error: err.message });
