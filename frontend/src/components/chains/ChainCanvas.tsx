@@ -13,6 +13,8 @@ import { PromptNode } from './PromptNode';
 import { ConditionalNode } from './ConditionalNode';
 import { MergeNode } from './MergeNode';
 import { CodeNode } from './CodeNode';
+import { ConstantsNode } from './ConstantsNode';
+import { OutputNode } from './OutputNode';
 
 const nodeTypes = {
   variable: VariableNode,
@@ -20,6 +22,8 @@ const nodeTypes = {
   conditional: ConditionalNode,
   merge: MergeNode,
   code: CodeNode,
+  constants: ConstantsNode,
+  output: OutputNode,
 };
 
 export function ChainCanvas() {

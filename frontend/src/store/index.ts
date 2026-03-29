@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage, Chain, ChainDetail, CodeFunction } from '../types';
+import { Prompt, TestCase, ModelInfo, TokenUsage, Agent, AgentMessage, Chain, ChainDetail, CodeFunction, ChainTestCase } from '../types';
 import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import { applyNodeChanges, applyEdgeChanges, addEdge } from '@xyflow/react';
 import { api } from '../lib/api';
@@ -204,6 +204,29 @@ interface AppState {
   setChainStatus: (status: 'idle' | 'running' | 'completed' | 'error') => void;
   setChainAbortController: (controller: AbortController | null) => void;
   setSelectedChainNodeId: (id: string | null) => void;
+
+  // Chain test cases
+  activeChainSubTab: 'canvas' | 'test-cases';
+  chainTestCases: Record<string, ChainTestCase>;
+  chainTestCaseRunData: Record<string, { durationMs?: number }>;
+  selectedChainTestCaseIds: Record<string, true>;
+
+  setActiveChainSubTab: (tab: 'canvas' | 'test-cases') => void;
+  loadChainTestCases: () => Promise<void>;
+  addChainTestCase: () => Promise<void>;
+  updateChainTestCase: (id: string, data: Partial<ChainTestCase>) => Promise<void>;
+  deleteChainTestCase: (id: string) => Promise<void>;
+  deleteAllChainTestCases: () => Promise<void>;
+  toggleChainTestCaseSelection: (id: string) => void;
+  selectChainTestCase: (id: string) => void;
+  deselectChainTestCase: (id: string) => void;
+  selectAllChainTestCases: () => void;
+  deselectAllChainTestCases: () => void;
+  setChainTestCaseOutput: (id: string, field: 'output' | 'thinking' | 'evalResult', value: string) => void;
+  setChainTestCaseStatus: (id: string, status: ChainTestCase['status']) => void;
+  setChainTestCaseEvalStatus: (id: string, evalStatus: ChainTestCase['evalStatus']) => void;
+  setChainTestCaseRunData: (id: string, data: { durationMs?: number }) => void;
+  clearChainTestCaseRunData: () => void;
 }
 
 export const useStore = create<AppState>()(
@@ -259,6 +282,10 @@ export const useStore = create<AppState>()(
     chainStatus: 'idle',
     chainAbortController: null,
     selectedChainNodeId: null,
+    activeChainSubTab: 'canvas' as const,
+    chainTestCases: {},
+    chainTestCaseRunData: {},
+    selectedChainTestCaseIds: {},
     activePage: 'prompt-tester',
     activeSubTab: 'tester',
 
@@ -907,7 +934,14 @@ export const useStore = create<AppState>()(
         s.chainEdges = edges;
         s.chainNodeStates = {};
         s.chainStatus = 'idle';
+        s.activeChainSubTab = 'canvas';
+        s.chainTestCases = {};
+        s.chainTestCaseRunData = {};
+        s.selectedChainTestCaseIds = {};
       });
+
+      // Load chain test cases in background
+      get().loadChainTestCases();
     },
 
     updateChain: async (data: Partial<Chain>) => {
@@ -981,9 +1015,16 @@ export const useStore = create<AppState>()(
     },
 
     addChainNode: (type, position) => {
+      // Enforce single output node
+      if (type === 'output') {
+        const state = get();
+        if (state.chainNodes.some((n) => n.type === 'output')) return;
+      }
       const id = crypto.randomUUID();
       const defaultConfig =
-        type === 'variable' ? { text: '' }
+        type === 'variable' ? { text: '', name: '' }
+        : type === 'constants' ? { text: '' }
+        : type === 'output' ? {}
         : type === 'conditional' ? { conditions: [] }
         : type === 'merge' ? { inputCount: 2 }
         : type === 'code' ? { codeFunctionId: '' }
@@ -1083,5 +1124,86 @@ export const useStore = create<AppState>()(
     setChainStatus: (status) => { set((s) => { s.chainStatus = status; }); },
     setChainAbortController: (controller) => { set((s) => { s.chainAbortController = controller; }); },
     setSelectedChainNodeId: (id) => { set((s) => { s.selectedChainNodeId = id; }); },
+
+    // Chain test case actions
+    setActiveChainSubTab: (tab) => { set((s) => { s.activeChainSubTab = tab; }); },
+
+    loadChainTestCases: async () => {
+      const { activeChainId } = get();
+      if (!activeChainId) return;
+      const cases = await api.getChainTestCases(activeChainId);
+      set((s) => {
+        s.chainTestCases = {};
+        for (const tc of cases) {
+          s.chainTestCases[tc.id] = { ...tc, evalStatus: 'idle' };
+        }
+      });
+    },
+
+    addChainTestCase: async () => {
+      const { activeChainId } = get();
+      if (!activeChainId) return;
+      const tc = await api.createChainTestCase(activeChainId);
+      set((s) => { s.chainTestCases[tc.id] = { ...tc, evalStatus: 'idle' }; });
+    },
+
+    updateChainTestCase: async (id, data) => {
+      const existing = get().chainTestCases[id];
+      if (!existing) return;
+      const updated = await api.updateChainTestCase(id, data);
+      set((s) => { s.chainTestCases[id] = { ...s.chainTestCases[id], ...updated }; });
+    },
+
+    deleteChainTestCase: async (id) => {
+      set((s) => { delete s.chainTestCases[id]; delete s.selectedChainTestCaseIds[id]; });
+      await api.deleteChainTestCase(id);
+    },
+
+    deleteAllChainTestCases: async () => {
+      const { activeChainId } = get();
+      if (!activeChainId) return;
+      set((s) => { s.chainTestCases = {}; s.selectedChainTestCaseIds = {}; s.chainTestCaseRunData = {}; });
+      await api.deleteAllChainTestCases(activeChainId);
+    },
+
+    toggleChainTestCaseSelection: (id) => {
+      set((s) => {
+        if (s.selectedChainTestCaseIds[id]) { delete s.selectedChainTestCaseIds[id]; }
+        else { s.selectedChainTestCaseIds[id] = true; }
+      });
+    },
+
+    selectChainTestCase: (id) => { set((s) => { s.selectedChainTestCaseIds[id] = true; }); },
+    deselectChainTestCase: (id) => { set((s) => { delete s.selectedChainTestCaseIds[id]; }); },
+
+    selectAllChainTestCases: () => {
+      set((s) => {
+        for (const id of Object.keys(s.chainTestCases)) {
+          s.selectedChainTestCaseIds[id] = true;
+        }
+      });
+    },
+
+    deselectAllChainTestCases: () => { set((s) => { s.selectedChainTestCaseIds = {}; }); },
+
+    setChainTestCaseOutput: (id, field, value) => {
+      set((s) => {
+        if (s.chainTestCases[id]) { (s.chainTestCases[id] as any)[field] = value; }
+      });
+    },
+
+    setChainTestCaseStatus: (id, status) => {
+      set((s) => { if (s.chainTestCases[id]) { s.chainTestCases[id].status = status; } });
+    },
+
+    setChainTestCaseEvalStatus: (id, evalStatus) => {
+      set((s) => { if (s.chainTestCases[id]) { s.chainTestCases[id].evalStatus = evalStatus; } });
+    },
+
+    setChainTestCaseRunData: (id, data) => {
+      set((s) => { s.chainTestCaseRunData[id] = data; });
+    },
+
+    clearChainTestCaseRunData: () => { set((s) => { s.chainTestCaseRunData = {}; }); },
   })),
 );

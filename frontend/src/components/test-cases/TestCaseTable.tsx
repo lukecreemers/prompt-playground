@@ -103,8 +103,6 @@ export function TestCaseTable() {
   const detectedVars = useDetectedVariables();
   const evalEnabled = activePrompt?.evalPrompt !== null && activePrompt?.evalPrompt !== undefined;
 
-  const testCaseRunData = useStore((s) => s.testCaseRunData);
-  const models = useStore((s) => s.models);
   const data = useMemo(() => Object.values(testCases), [testCases]);
 
   // Measure container once to compute initial flex column sizes
@@ -243,11 +241,8 @@ export function TestCaseTable() {
       id: 'cost',
       header: 'Cost',
       cell: ({ row }) => {
-        const rd = testCaseRunData[row.original.id];
-        if (!rd?.usage) return <span className="text-muted-foreground/30">&mdash;</span>;
-        const model = models.find((m) => m.id === activePrompt?.modelName);
-        if (!model) return <span className="text-muted-foreground/30">&mdash;</span>;
-        const cost = ((rd.usage.input_tokens || 0) * model.inputTokenCost + (rd.usage.output_tokens || 0) * model.outputTokenCost) / 1_000_000;
+        const cost = row.original.cost;
+        if (cost == null) return <span className="text-muted-foreground/30">&mdash;</span>;
         return <span className="text-xs font-mono text-muted-foreground">${cost.toFixed(4)}</span>;
       },
       size: FIXED_COL_WIDTH.cost,
@@ -259,9 +254,9 @@ export function TestCaseTable() {
       id: 'time',
       header: 'Time',
       cell: ({ row }) => {
-        const rd = testCaseRunData[row.original.id];
-        if (!rd?.durationMs) return <span className="text-muted-foreground/30">&mdash;</span>;
-        const secs = (rd.durationMs / 1000).toFixed(1);
+        const ms = row.original.durationMs;
+        if (ms == null) return <span className="text-muted-foreground/30">&mdash;</span>;
+        const secs = (ms / 1000).toFixed(1);
         return <span className="text-xs font-mono text-muted-foreground">{secs}s</span>;
       },
       size: FIXED_COL_WIDTH.time,
@@ -307,7 +302,7 @@ export function TestCaseTable() {
     });
 
     return cols;
-  }, [detectedVars, evalEnabled, selectedIds, handleSelectPointerDown, handleSelectPointerEnter, flexColSizes, testCaseRunData, models, activePrompt]);
+  }, [detectedVars, evalEnabled, selectedIds, handleSelectPointerDown, handleSelectPointerEnter, flexColSizes, activePrompt]);
 
   const table = useReactTable({
     data,

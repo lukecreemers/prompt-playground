@@ -6,13 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, X, Code } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen, Type, MessageSquare, ArrowLeft, Search, GitBranch, Merge, X, Code, Lock, Flag } from 'lucide-react';
 import { detectVariables } from '@/lib/interpolate';
 
 const NODE_CATEGORIES = [
   {
     label: 'Inputs',
-    items: [{ type: 'variable', label: 'Variable', icon: Type }],
+    items: [
+      { type: 'variable', label: 'Variable', icon: Type },
+      { type: 'constants', label: 'Constants', icon: Lock },
+    ],
   },
   {
     label: 'AI',
@@ -28,6 +31,10 @@ const NODE_CATEGORIES = [
       { type: 'conditional', label: 'Conditional', icon: GitBranch },
       { type: 'merge', label: 'Merge', icon: Merge },
     ],
+  },
+  {
+    label: 'Output',
+    items: [{ type: 'output', label: 'Output', icon: Flag }],
   },
 ];
 
@@ -120,6 +127,8 @@ export function ChainSidebar() {
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           {selectedNode
             ? selectedNode.type === 'variable' ? 'Variable Config'
+            : selectedNode.type === 'constants' ? 'Constants Config'
+            : selectedNode.type === 'output' ? 'Output Config'
             : selectedNode.type === 'conditional' ? 'Conditional Config'
             : selectedNode.type === 'merge' ? 'Merge Config'
             : selectedNode.type === 'code' ? 'Code Config'
@@ -142,15 +151,45 @@ export function ChainSidebar() {
             </button>
 
             {selectedNode.type === 'variable' && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Name</Label>
+                  <Input
+                    value={config.name || ''}
+                    onChange={(e) => updateNodeConfig({ name: e.target.value })}
+                    placeholder="Variable name..."
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Default Value</Label>
+                  <textarea
+                    value={config.text || ''}
+                    onChange={(e) => updateNodeConfig({ text: e.target.value })}
+                    placeholder="Default value..."
+                    className="w-full min-h-[100px] text-sm bg-background border border-border rounded p-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+                    rows={5}
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedNode.type === 'constants' && (
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Text Value</Label>
+                <Label className="text-xs text-muted-foreground">Constant Value</Label>
                 <textarea
                   value={config.text || ''}
                   onChange={(e) => updateNodeConfig({ text: e.target.value })}
-                  placeholder="Enter text..."
-                  className="w-full min-h-[100px] text-sm bg-background border border-border rounded p-2 resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder="Enter constant value..."
+                  className="w-full min-h-[100px] text-sm bg-background border border-border rounded p-2 resize-y focus:outline-none focus:ring-1 focus:ring-amber-500"
                   rows={5}
                 />
+              </div>
+            )}
+
+            {selectedNode.type === 'output' && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">The output node captures the final result of the chain. Connect any node's output to this node's input.</p>
               </div>
             )}
 

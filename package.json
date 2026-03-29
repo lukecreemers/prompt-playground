@@ -6,10 +6,10 @@
   },
   "scripts": {
     "dev": "pnpm --parallel -r run dev",
-    "dev:backend": "pnpm --filter backend run start:dev",
-    "dev:frontend": "pnpm --filter frontend run dev",
+    "dev:backend": "pnpm --filter maestro-testing-backend run start:dev",
+    "dev:frontend": "pnpm --filter maestro-testing-frontend run dev",
     "build": "pnpm -r run build",
-    "build:backend": "pnpm --filter backend run build",
-    "build:frontend": "pnpm --filter frontend run build"
+    "build:backend": "pnpm --filter maestro-testing-backend run build",
+    "build:frontend": "pnpm --filter maestro-testing-frontend run build"
   }
 }

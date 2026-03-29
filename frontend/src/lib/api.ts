@@ -89,4 +89,20 @@ export const api = {
   deleteChain: (id: string) => request<void>(`/chains/${id}`, { method: 'DELETE' }),
   saveChainGraph: (id: string, data: { nodes: any[]; edges: any[] }) =>
     request<any>(`/chains/${id}/graph`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Chain Test Cases
+  getChainTestCases: (chainId: string) => request<any[]>(`/chains/${chainId}/test-cases`),
+  createChainTestCase: (chainId: string, variables?: Record<string, string>) =>
+    request<any>(`/chains/${chainId}/test-cases`, { method: 'POST', body: JSON.stringify({ variables }) }),
+  updateChainTestCase: (id: string, data: any) =>
+    request<any>(`/chain-test-cases/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteChainTestCase: (id: string) => request<void>(`/chain-test-cases/${id}`, { method: 'DELETE' }),
+  deleteAllChainTestCases: (chainId: string) => request<void>(`/chains/${chainId}/test-cases`, { method: 'DELETE' }),
+  uploadChainTestCaseCsv: async (chainId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/chains/${chainId}/test-cases/csv`, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('CSV upload failed');
+    return res.json();
+  },
 };

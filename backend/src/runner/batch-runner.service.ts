@@ -4,6 +4,7 @@ import { LlmRequest } from '../ai/interfaces/llm-provider.interface';
 import { TestCase } from '../database/entities/test-case.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { getModelInfo } from '../ai/config/model-catalog';
 import pLimit from 'p-limit';
 
 interface BatchOptions {
@@ -36,7 +37,7 @@ export class BatchRunnerService {
 
         send('case_start', { testCaseId: tc.id });
 
-        await this.tcRepo.update(tc.id, { status: 'running', output: null, thinking: null, evalResult: null });
+        await this.tcRepo.update(tc.id, { status: 'running', output: null, thinking: null, evalResult: null, durationMs: null, cost: null });
 
         const request: LlmRequest = {
           model: prompt.modelName,
@@ -80,13 +81,24 @@ export class BatchRunnerService {
 
           const durationMs = Date.now() - startTime;
 
+          // Compute cost from usage + model catalog
+          let cost: number | null = null;
+          if (usage) {
+            const model = getModelInfo(prompt.modelName);
+            if (model) {
+              cost = ((usage.input_tokens || 0) * model.inputTokenCost + (usage.output_tokens || 0) * model.outputTokenCost) / 1_000_000;
+            }
+          }
+
           await this.tcRepo.update(tc.id, {
             output: fullText,
             thinking: fullThinking || null,
             status: 'completed',
+            durationMs,
+            cost,
           });
 
-          send('case_done', { testCaseId: tc.id, output: fullText, thinking: fullThinking || null, usage, durationMs });
+          send('case_done', { testCaseId: tc.id, output: fullText, thinking: fullThinking || null, usage, durationMs, cost });
         } catch (err: any) {
           await this.tcRepo.update(tc.id, { status: 'failed', output: err.message });
           send('case_error', { testCaseId: tc.id, error: err.message });

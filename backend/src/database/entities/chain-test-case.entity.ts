@@ -1,13 +1,13 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
-import { Prompt } from './prompt.entity';
+import { Chain } from './chain.entity';
 
-@Entity('test_cases')
-export class TestCase {
+@Entity('chain_test_cases')
+export class ChainTestCase {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'text' })
-  promptId: string;
+  chainId: string;
 
   @Column({ type: 'text', default: '{}' })
   variables: string;
@@ -33,7 +33,7 @@ export class TestCase {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Prompt, (p) => p.testCases, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'promptId' })
-  prompt: Prompt;
+  @ManyToOne(() => Chain, (c) => c.testCases, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'chainId' })
+  chain: Chain;
 }

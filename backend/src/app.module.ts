@@ -8,6 +8,7 @@ import { RunnerModule } from './runner/runner.module';
 import { AiModule } from './ai/ai.module';
 import { AgentsModule } from './agents/agents.module';
 import { ChainsModule } from './chains/chains.module';
+import { ChainTestCasesModule } from './chain-test-cases/chain-test-cases.module';
 import { CodeFunctionsModule } from './code-functions/code-functions.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { CodeFunctionsModule } from './code-functions/code-functions.module';
     AiModule,
     AgentsModule,
     ChainsModule,
+    ChainTestCasesModule,
     CodeFunctionsModule,
   ],
 })

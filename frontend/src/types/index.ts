@@ -34,6 +34,8 @@ export interface TestCase {
   evalResult: string | null;
   evalStatus: 'idle' | 'running' | 'completed';
   status: 'idle' | 'running' | 'completed' | 'failed';
+  durationMs: number | null;
+  cost: number | null;
   createdAt: string;
 }
 
@@ -79,8 +81,29 @@ export interface AgentMessage {
 export interface Chain {
   id: string;
   name: string;
+  concurrencyLimit: number;
+  evalPrompt: string | null;
+  evalModelName: string | null;
+  evalTemperature: number | null;
+  evalMaxTokens: number | null;
+  evalThinkingEnabled: number | null;
+  evalThinkingBudget: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChainTestCase {
+  id: string;
+  chainId: string;
+  variables: string;
+  output: string | null;
+  thinking: string | null;
+  evalResult: string | null;
+  evalStatus: 'idle' | 'running' | 'completed';
+  status: 'idle' | 'running' | 'completed' | 'failed';
+  durationMs: number | null;
+  cost: number | null;
+  createdAt: string;
 }
 
 export interface ChainNodeData {
@@ -123,6 +146,7 @@ export interface ChainNodeConfig_Code {
 
 export interface ChainNodeConfig_Variable {
   text: string;
+  name: string;
 }
 
 export interface ChainNodeConfig_Prompt {

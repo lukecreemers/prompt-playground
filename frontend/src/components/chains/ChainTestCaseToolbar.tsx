@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useStore } from '@/store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -7,66 +8,73 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { CsvUploadButton } from './CsvUploadButton';
-import { Play, FlaskConical, Plus, Trash2, MoreVertical, Download } from 'lucide-react';
+import { Play, FlaskConical, Plus, Trash2, MoreVertical, Download, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 import { createSSEStream } from '@/lib/sse';
+import { api } from '@/lib/api';
 
-export function TestCaseToolbar() {
-  const activePromptId = useStore((s) => s.activePromptId);
-  const activePrompt = useStore((s) => s.activePrompt);
-  const selectedIds = useStore((s) => s.selectedTestCaseIds);
-  const testCases = useStore((s) => s.testCases);
-  const addTestCase = useStore((s) => s.addTestCase);
-  const deleteAllTestCases = useStore((s) => s.deleteAllTestCases);
-  const updatePrompt = useStore((s) => s.updatePrompt);
+export function ChainTestCaseToolbar() {
+  const activeChainId = useStore((s) => s.activeChainId);
+  const activeChain = useStore((s) => s.activeChain);
+  const selectedIds = useStore((s) => s.selectedChainTestCaseIds);
+  const chainTestCases = useStore((s) => s.chainTestCases);
+  const addChainTestCase = useStore((s) => s.addChainTestCase);
+  const deleteAllChainTestCases = useStore((s) => s.deleteAllChainTestCases);
+  const updateChain = useStore((s) => s.updateChain);
+  const chainNodes = useStore((s) => s.chainNodes);
 
-  const evalEnabled = activePrompt?.evalPrompt !== null && activePrompt?.evalPrompt !== undefined;
+  const evalEnabled = activeChain?.evalPrompt !== null && activeChain?.evalPrompt !== undefined;
+
+  const variableNames = useMemo(() =>
+    chainNodes
+      .filter((n) => n.type === 'variable')
+      .map((n) => (n.data as any).config?.name)
+      .filter(Boolean),
+    [chainNodes],
+  );
 
   const runBatch = (withEval: boolean, ids?: string[]) => {
-    if (!activePromptId) return;
+    if (!activeChainId) return;
 
     const testCaseIds = ids || Object.keys(selectedIds);
 
-    // Reset statuses
     const store = useStore.getState();
-    store.clearTestCaseRunData();
+    store.clearChainTestCaseRunData();
     for (const id of testCaseIds) {
-      store.setTestCaseStatus(id, 'running');
-      store.setTestCaseOutput(id, 'output', '');
-      store.setTestCaseOutput(id, 'thinking', '');
-      store.setTestCaseOutput(id, 'evalResult', '');
+      store.setChainTestCaseStatus(id, 'running');
+      store.setChainTestCaseOutput(id, 'output', '');
+      store.setChainTestCaseOutput(id, 'thinking', '');
+      store.setChainTestCaseOutput(id, 'evalResult', '');
     }
 
     createSSEStream(
-      `/api/prompts/${activePromptId}/run-batch`,
+      `/api/chains/${activeChainId}/run-batch`,
       { testCaseIds: testCaseIds.length > 0 ? testCaseIds : undefined, withEval },
       {
         onEvent: (event, data) => {
           const s = useStore.getState();
           switch (event) {
             case 'case_start':
-              s.setTestCaseStatus(data.testCaseId, 'running');
+              s.setChainTestCaseStatus(data.testCaseId, 'running');
               break;
             case 'case_done':
-              s.setTestCaseOutput(data.testCaseId, 'output', data.output);
-              s.setTestCaseOutput(data.testCaseId, 'thinking', data.thinking);
-              s.setTestCaseStatus(data.testCaseId, 'completed');
-              s.setTestCaseRunData(data.testCaseId, { usage: data.usage, durationMs: data.durationMs });
-              s.setTestCaseOutput(data.testCaseId, 'durationMs' as any, data.durationMs ?? null);
-              s.setTestCaseOutput(data.testCaseId, 'cost' as any, data.cost ?? null);
+              s.setChainTestCaseOutput(data.testCaseId, 'output', data.output);
+              s.setChainTestCaseStatus(data.testCaseId, 'completed');
+              s.setChainTestCaseRunData(data.testCaseId, { durationMs: data.durationMs });
+              s.setChainTestCaseOutput(data.testCaseId, 'durationMs' as any, data.durationMs ?? null);
+              s.setChainTestCaseOutput(data.testCaseId, 'cost' as any, data.cost ?? null);
               break;
             case 'case_error':
-              s.setTestCaseStatus(data.testCaseId, 'failed');
-              s.setTestCaseOutput(data.testCaseId, 'output', data.error);
+              s.setChainTestCaseStatus(data.testCaseId, 'failed');
+              s.setChainTestCaseOutput(data.testCaseId, 'output', data.error);
               break;
             case 'eval_start':
-              s.setTestCaseEvalStatus(data.testCaseId, 'running');
-              s.setTestCaseOutput(data.testCaseId, 'evalResult', '');
+              s.setChainTestCaseEvalStatus(data.testCaseId, 'running');
+              s.setChainTestCaseOutput(data.testCaseId, 'evalResult', '');
               break;
             case 'case_eval_done':
-              s.setTestCaseOutput(data.testCaseId, 'evalResult', data.evalResult);
-              s.setTestCaseEvalStatus(data.testCaseId, 'completed');
+              s.setChainTestCaseOutput(data.testCaseId, 'evalResult', data.evalResult);
+              s.setChainTestCaseEvalStatus(data.testCaseId, 'completed');
               break;
           }
         },
@@ -75,32 +83,32 @@ export function TestCaseToolbar() {
   };
 
   const runEvalOnly = (ids?: string[]) => {
-    if (!activePromptId) return;
+    if (!activeChainId) return;
 
     const testCaseIds = ids || Object.keys(selectedIds);
-    const targetIds = testCaseIds.filter((id) => testCases[id]?.output);
+    const targetIds = testCaseIds.filter((id) => chainTestCases[id]?.output);
     if (targetIds.length === 0) return;
 
     const store = useStore.getState();
     for (const id of targetIds) {
-      store.setTestCaseEvalStatus(id, 'running');
-      store.setTestCaseOutput(id, 'evalResult', '');
+      store.setChainTestCaseEvalStatus(id, 'running');
+      store.setChainTestCaseOutput(id, 'evalResult', '');
     }
 
     createSSEStream(
-      `/api/prompts/${activePromptId}/run-eval`,
+      `/api/chains/${activeChainId}/run-eval`,
       { testCaseIds: targetIds },
       {
         onEvent: (event, data) => {
           const s = useStore.getState();
           switch (event) {
             case 'eval_start':
-              s.setTestCaseEvalStatus(data.testCaseId, 'running');
-              s.setTestCaseOutput(data.testCaseId, 'evalResult', '');
+              s.setChainTestCaseEvalStatus(data.testCaseId, 'running');
+              s.setChainTestCaseOutput(data.testCaseId, 'evalResult', '');
               break;
             case 'case_eval_done':
-              s.setTestCaseOutput(data.testCaseId, 'evalResult', data.evalResult);
-              s.setTestCaseEvalStatus(data.testCaseId, 'completed');
+              s.setChainTestCaseOutput(data.testCaseId, 'evalResult', data.evalResult);
+              s.setChainTestCaseEvalStatus(data.testCaseId, 'completed');
               break;
           }
         },
@@ -109,22 +117,14 @@ export function TestCaseToolbar() {
   };
 
   const downloadCsv = () => {
-    const cases = Object.values(testCases);
+    const cases = Object.values(chainTestCases);
     if (cases.length === 0) return;
 
-    // Collect all variable keys
-    const varKeys = new Set<string>();
-    const parsed = cases.map((tc) => {
+    const rows = cases.map((tc) => {
       const vars: Record<string, string> = tc.variables ? JSON.parse(tc.variables) : {};
-      Object.keys(vars).forEach((k) => varKeys.add(k));
-      return { vars, tc };
-    });
-
-    const columns = [...varKeys];
-    const rows = parsed.map(({ vars, tc }) => {
       const row: Record<string, string> = {};
-      for (const key of columns) {
-        row[key] = vars[key] || '';
+      for (const name of variableNames) {
+        row[name] = vars[name] || '';
       }
       row['output'] = tc.output || '';
       if (evalEnabled) {
@@ -138,12 +138,26 @@ export function TestCaseToolbar() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `test-cases-${activePrompt?.name || 'export'}.csv`;
+    a.download = `chain-test-cases-${activeChain?.name || 'export'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const allIds = Object.keys(testCases);
+  const handleCsvUpload = () => {
+    if (!activeChainId) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      await api.uploadChainTestCaseCsv(activeChainId, file);
+      useStore.getState().loadChainTestCases();
+    };
+    input.click();
+  };
+
+  const allIds = Object.keys(chainTestCases);
   const selectedKeys = Object.keys(selectedIds);
   const hasSelected = selectedKeys.length > 0;
 
@@ -188,9 +202,11 @@ export function TestCaseToolbar() {
 
       <div className="flex-1" />
 
-      <CsvUploadButton />
+      <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={handleCsvUpload}>
+        <Upload className="h-3 w-3" /> CSV
+      </Button>
 
-      <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={addTestCase}>
+      <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={addChainTestCase}>
         <Plus className="h-3 w-3" /> Add Row
       </Button>
 
@@ -200,7 +216,7 @@ export function TestCaseToolbar() {
         size="sm"
         variant="ghost"
         className="h-7 text-xs text-destructive hover:text-destructive gap-1.5"
-        onClick={deleteAllTestCases}
+        onClick={deleteAllChainTestCases}
         disabled={allIds.length === 0}
       >
         <Trash2 className="h-3 w-3" /> Delete All
@@ -214,7 +230,7 @@ export function TestCaseToolbar() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
-            onClick={() => updatePrompt({ evalPrompt: evalEnabled ? null : '' })}
+            onClick={() => updateChain({ evalPrompt: evalEnabled ? null : '' } as any)}
           >
             <FlaskConical className="h-4 w-4 mr-2" />
             {evalEnabled ? 'Disable Eval' : 'Enable Eval'}

@@ -1,13 +1,26 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { AiService } from '../ai/ai.service';
 import { PromptsService } from '../prompts/prompts.service';
 import { CodeFunctionsService } from '../code-functions/code-functions.service';
 import { CodeExecutionService } from '../code-functions/code-execution.service';
 import { LlmRequest } from '../ai/interfaces/llm-provider.interface';
+import { getModelInfo } from '../ai/config/model-catalog';
+import { ChainTestCase } from '../database/entities/chain-test-case.entity';
 import { ChainNode } from '../database/entities/chain-node.entity';
 import { ChainEdge } from '../database/entities/chain-edge.entity';
+import pLimit from 'p-limit';
 
 type SendFn = (event: string, data: any) => void;
+
+interface BatchOptions {
+  chainId: string;
+  nodes: ChainNode[];
+  edges: ChainEdge[];
+  testCases: ChainTestCase[];
+  concurrencyLimit: number;
+}
 
 function evaluateCondition(input: string, operator: string, value: string): boolean {
   switch (operator) {
@@ -21,42 +34,95 @@ function evaluateCondition(input: string, operator: string, value: string): bool
 }
 
 @Injectable()
-export class ChainExecutorService {
-  private activeRuns = new Map<string, AbortController>();
+export class ChainBatchRunnerService {
+  private aborted = false;
 
   constructor(
     private readonly ai: AiService,
     private readonly promptsService: PromptsService,
     private readonly codeFunctionsService: CodeFunctionsService,
     private readonly codeExecutionService: CodeExecutionService,
+    @InjectRepository(ChainTestCase)
+    private readonly tcRepo: Repository<ChainTestCase>,
   ) {}
 
-  stop(chainId: string): void {
-    const controller = this.activeRuns.get(chainId);
-    if (controller) {
-      controller.abort();
-      this.activeRuns.delete(chainId);
-    }
+  stopAll(): void {
+    this.aborted = true;
   }
 
-  async execute(
-    chainId: string,
+  async runBatch(options: BatchOptions, send: SendFn, isClosed: () => boolean): Promise<void> {
+    const { nodes, edges, testCases, concurrencyLimit } = options;
+    this.aborted = false;
+    const limit = pLimit(concurrencyLimit || 5);
+
+    send('batch_start', { totalCases: testCases.length });
+
+    const outputNodeId = nodes.find((n) => n.type === 'output')?.id;
+
+    const tasks = testCases.map((tc) =>
+      limit(async () => {
+        if (isClosed() || this.aborted) return;
+
+        const variableOverrides = JSON.parse(tc.variables || '{}');
+
+        send('case_start', { testCaseId: tc.id });
+        await this.tcRepo.update(tc.id, { status: 'running', output: null, thinking: null, evalResult: null, durationMs: null, cost: null });
+
+        try {
+          // Deep-clone every node's config, applying variable overrides
+          const nodeConfigs = new Map<string, any>();
+          for (const node of nodes) {
+            const config = JSON.parse(node.config || '{}');
+            if (node.type === 'variable') {
+              const varName = config.name;
+              if (varName && variableOverrides[varName] !== undefined) {
+                config.text = variableOverrides[varName];
+              }
+            }
+            nodeConfigs.set(node.id, config);
+          }
+
+          const result = await this.executeChain(nodes, edges, nodeConfigs, isClosed);
+
+          const capturedOutput = outputNodeId ? (result.outputs.get(outputNodeId) || '') : '';
+          const { durationMs, cost } = result;
+
+          await this.tcRepo.update(tc.id, {
+            output: capturedOutput,
+            status: 'completed',
+            durationMs,
+            cost,
+          });
+
+          send('case_done', { testCaseId: tc.id, output: capturedOutput, durationMs, cost });
+        } catch (err: any) {
+          await this.tcRepo.update(tc.id, { status: 'failed', output: err.message });
+          send('case_error', { testCaseId: tc.id, error: err.message });
+        }
+      }),
+    );
+
+    await Promise.all(tasks);
+  }
+
+  /**
+   * Self-contained DAG executor for a single test case.
+   * All state is local — no shared mutation, safe for parallel calls.
+   */
+  private async executeChain(
     nodes: ChainNode[],
     edges: ChainEdge[],
-    send: SendFn,
+    nodeConfigs: Map<string, any>,
     isClosed: () => boolean,
-  ): Promise<void> {
-    // Abort any previous run for this chain
-    this.stop(chainId);
+  ): Promise<{ outputs: Map<string, string>; durationMs: number; cost: number | null }> {
+    const startTime = Date.now();
+    const cancelled = () => isClosed() || this.aborted;
+    let totalCost = 0;
+    let hasCost = false;
 
-    const abortController = new AbortController();
-    this.activeRuns.set(chainId, abortController);
-    const signal = abortController.signal;
-
-    const cancelled = () => signal.aborted || isClosed();
-    // Build adjacency maps
-    const inbound = new Map<string, ChainEdge[]>(); // targetNodeId -> edges
-    const outbound = new Map<string, ChainEdge[]>(); // sourceNodeId -> edges
+    // Build adjacency
+    const inbound = new Map<string, ChainEdge[]>();
+    const outbound = new Map<string, ChainEdge[]>();
     const nodeMap = new Map<string, ChainNode>();
 
     for (const node of nodes) {
@@ -64,92 +130,74 @@ export class ChainExecutorService {
       inbound.set(node.id, []);
       outbound.set(node.id, []);
     }
-
     for (const edge of edges) {
       inbound.get(edge.targetNodeId)?.push(edge);
       outbound.get(edge.sourceNodeId)?.push(edge);
     }
 
-    // Kahn's algorithm for cycle detection
+    // Cycle detection (Kahn's)
     const inDegree = new Map<string, number>();
     for (const node of nodes) {
       inDegree.set(node.id, inbound.get(node.id)!.length);
     }
-
-    const queue: string[] = [];
-    for (const [nodeId, degree] of inDegree) {
-      if (degree === 0) queue.push(nodeId);
+    const tempQueue: string[] = [];
+    for (const [id, deg] of inDegree) {
+      if (deg === 0) tempQueue.push(id);
     }
-
     let visited = 0;
-    const topoOrder: string[] = [];
-    const tempQueue = [...queue];
-    while (tempQueue.length > 0) {
-      const nodeId = tempQueue.shift()!;
-      topoOrder.push(nodeId);
+    const q = [...tempQueue];
+    while (q.length > 0) {
+      const id = q.shift()!;
       visited++;
-      for (const edge of outbound.get(nodeId) || []) {
-        const newDeg = inDegree.get(edge.targetNodeId)! - 1;
-        inDegree.set(edge.targetNodeId, newDeg);
-        if (newDeg === 0) tempQueue.push(edge.targetNodeId);
+      for (const edge of outbound.get(id) || []) {
+        const nd = inDegree.get(edge.targetNodeId)! - 1;
+        inDegree.set(edge.targetNodeId, nd);
+        if (nd === 0) q.push(edge.targetNodeId);
       }
     }
-
     if (visited !== nodes.length) {
-      send('chain_error', { error: 'Cycle detected in chain graph' });
-      return;
+      throw new Error('Cycle detected in chain graph');
     }
 
-    send('chain_start', { totalNodes: nodes.length });
-
-    // Ready-fire execution
-    const nodeInputs = new Map<string, Map<string, string>>(); // nodeId -> (handle -> value)
-    const nodeOutputs = new Map<string, string>(); // nodeId -> output value
-    const nodeOutputMap = new Map<string, Record<string, string>>(); // nodeId -> per-handle outputs (for code nodes)
+    // Execution state — all local, no mutation of shared objects
+    const nodeInputs = new Map<string, Map<string, string>>();
+    const nodeOutputs = new Map<string, string>();
+    const nodeOutputMap = new Map<string, Record<string, string>>();
+    const matchedHandles = new Map<string, string>(); // conditional node results
     const completed = new Set<string>();
     const running = new Map<string, Promise<void>>();
 
-    // Initialize input maps
     for (const node of nodes) {
       nodeInputs.set(node.id, new Map());
     }
 
-    // Find initially ready nodes (no inbound edges)
     const ready = new Set<string>();
     for (const node of nodes) {
-      if (inbound.get(node.id)!.length === 0) {
-        ready.add(node.id);
-      }
+      if (inbound.get(node.id)!.length === 0) ready.add(node.id);
     }
 
     const fireNode = async (nodeId: string): Promise<void> => {
       if (cancelled()) return;
 
       const node = nodeMap.get(nodeId)!;
-      const config = JSON.parse(node.config || '{}');
-
-      send('node_start', { nodeId, type: node.type });
+      const config = nodeConfigs.get(nodeId);
 
       try {
         if (node.type === 'variable' || node.type === 'constants') {
-          const output = config.text || '';
-          nodeOutputs.set(nodeId, output);
-          send('node_done', { nodeId, output });
+          nodeOutputs.set(nodeId, config.text || '');
+
         } else if (node.type === 'output') {
           const input = nodeInputs.get(nodeId)?.get('input') || '';
           nodeOutputs.set(nodeId, input);
-          send('node_done', { nodeId, output: input });
+
         } else if (node.type === 'prompt') {
           const prompt = await this.promptsService.findOne(config.promptId);
-
-          // Gather inputs for variable interpolation
           const inputs = nodeInputs.get(nodeId)!;
           const variables: Record<string, string> = {};
           for (const [handle, value] of inputs) {
             if (handle === 'trigger') continue;
             variables[handle] = value;
           }
-
           const interpolated = prompt.content.replace(
             /\{\{(\w+)\}\}/g,
             (_, key) => variables[key] || '',
@@ -172,71 +220,45 @@ export class ChainExecutorService {
           };
 
           let fullText = '';
-          let fullThinking = '';
-
+          let usage: any = null;
           await new Promise<void>((resolve, reject) => {
             if (cancelled()) { resolve(); return; }
-
-            let settled = false;
-            const settle = (fn: () => void) => {
-              if (!settled) { settled = true; cleanup(); fn(); }
-            };
-
             const sub = this.ai.stream(request).subscribe({
               next: (chunk) => {
-                if (cancelled()) { settle(() => resolve()); return; }
-                switch (chunk.type) {
-                  case 'text_delta':
-                    fullText += chunk.content;
-                    send('node_text', { nodeId, content: chunk.content });
-                    break;
-                  case 'thinking_delta':
-                    fullThinking += chunk.content;
-                    send('node_thinking', { nodeId, content: chunk.content });
-                    break;
-                  case 'error':
-                    settle(() => reject(new Error(chunk.content)));
-                    break;
-                }
+                if (cancelled()) { sub.unsubscribe(); resolve(); return; }
+                if (chunk.type === 'text_delta') fullText += chunk.content;
+                else if (chunk.type === 'done') usage = chunk.metadata?.usage || null;
+                else if (chunk.type === 'error') { sub.unsubscribe(); reject(new Error(chunk.content)); }
               },
-              complete: () => settle(() => resolve()),
-              error: (err) => settle(() => reject(err)),
+              complete: () => resolve(),
+              error: (err) => reject(err),
             });
-
-            // Abort signal listener — fires immediately when stop() is called
-            const onAbort = () => {
-              sub.unsubscribe();
-              settle(() => resolve());
-            };
-            signal.addEventListener('abort', onAbort);
-
-            const cleanup = () => {
-              signal.removeEventListener('abort', onAbort);
-              sub.unsubscribe();
-            };
           });
+
+          // Accumulate cost from this prompt node
+          if (usage) {
+            const model = getModelInfo(modelName);
+            if (model) {
+              totalCost += ((usage.input_tokens || 0) * model.inputTokenCost + (usage.output_tokens || 0) * model.outputTokenCost) / 1_000_000;
+              hasCost = true;
+            }
+          }
 
           nodeOutputs.set(nodeId, fullText);
-          send('node_done', {
-            nodeId,
-            output: fullText,
-            thinking: fullThinking || undefined,
-          });
+
         } else if (node.type === 'conditional') {
           const input = nodeInputs.get(nodeId)?.get('input') || '';
           const conditions: { label: string; operator: string; value: string }[] = config.conditions || [];
-          let matchedHandle = 'else';
+          let matched = 'else';
           for (const cond of conditions) {
             if (evaluateCondition(input, cond.operator, cond.value)) {
-              matchedHandle = cond.label;
+              matched = cond.label;
               break;
             }
           }
           nodeOutputs.set(nodeId, input);
-          send('node_done', { nodeId, output: input, matchedHandle });
+          matchedHandles.set(nodeId, matched); // local map, not mutation
 
-          // Store matched handle for propagation filtering
-          (node as any)._matchedHandle = matchedHandle;
         } else if (node.type === 'code') {
           const codeFn = await this.codeFunctionsService.findOne(config.codeFunctionId);
           const inputs = nodeInputs.get(nodeId)!;
@@ -247,10 +269,9 @@ export class ChainExecutorService {
           }
           const outputNames: string[] = JSON.parse(codeFn.outputs || '[]');
           const result = await this.codeExecutionService.execute(codeFn.code, inputMap, outputNames);
-          const output = JSON.stringify(result);
-          nodeOutputs.set(nodeId, output);
+          nodeOutputs.set(nodeId, JSON.stringify(result));
           nodeOutputMap.set(nodeId, result);
-          send('node_done', { nodeId, output, outputs: result });
+
         } else if (node.type === 'merge') {
           const inputs = nodeInputs.get(nodeId)!;
           let mergeOutput = '';
@@ -259,71 +280,54 @@ export class ChainExecutorService {
             if (val !== undefined) { mergeOutput = val; break; }
           }
           nodeOutputs.set(nodeId, mergeOutput);
-          send('node_done', { nodeId, output: mergeOutput });
         }
 
         completed.add(nodeId);
 
-        // Propagate output to downstream nodes
+        // Propagate to downstream nodes
         const output = nodeOutputs.get(nodeId) || '';
-        const matchedHandle = (node as any)._matchedHandle as string | undefined;
+        const mh = matchedHandles.get(nodeId);
 
         for (const edge of outbound.get(nodeId) || []) {
-          // For conditional nodes, only propagate on the matched handle
-          if (node.type === 'conditional' && edge.sourceHandle !== matchedHandle) continue;
+          if (node.type === 'conditional' && edge.sourceHandle !== mh) continue;
 
-          // For code nodes, propagate per-handle output values
-          const perHandleOutputs = nodeOutputMap.get(nodeId);
-          const propagatedValue = perHandleOutputs && edge.sourceHandle && edge.sourceHandle in perHandleOutputs
-            ? perHandleOutputs[edge.sourceHandle]
+          const perHandle = nodeOutputMap.get(nodeId);
+          const value = perHandle && edge.sourceHandle && edge.sourceHandle in perHandle
+            ? perHandle[edge.sourceHandle]
             : output;
-          nodeInputs.get(edge.targetNodeId)?.set(edge.targetHandle, propagatedValue);
+          nodeInputs.get(edge.targetNodeId)?.set(edge.targetHandle, value);
 
-          // Check if target is now ready
           const targetNode = nodeMap.get(edge.targetNodeId)!;
           const targetInbound = inbound.get(edge.targetNodeId)!;
           const targetInputMap = nodeInputs.get(edge.targetNodeId)!;
 
-          let allReady: boolean;
-          if (targetNode.type === 'merge') {
-            // Merge fires when ANY input has a value
-            allReady = true;
-          } else {
-            allReady = targetInbound.every((e) => targetInputMap.has(e.targetHandle));
-          }
+          const allReady = targetNode.type === 'merge'
+            ? true
+            : targetInbound.every((e) => targetInputMap.has(e.targetHandle));
 
           if (allReady && !completed.has(edge.targetNodeId) && !running.has(edge.targetNodeId)) {
             ready.add(edge.targetNodeId);
           }
         }
       } catch (err: any) {
-        send('node_error', { nodeId, error: err.message });
+        // Node failed — mark completed so we don't block the DAG
+        completed.add(nodeId);
       }
     };
 
-    // Main execution loop: fire ready nodes in parallel
+    // Main loop
     while (ready.size > 0 || running.size > 0) {
-      if (cancelled()) return;
-
-      // Launch all ready nodes
+      if (cancelled()) break;
       for (const nodeId of ready) {
         ready.delete(nodeId);
-        const promise = fireNode(nodeId).then(() => {
-          running.delete(nodeId);
-        });
-        running.set(nodeId, promise);
+        const p = fireNode(nodeId).then(() => { running.delete(nodeId); });
+        running.set(nodeId, p);
       }
-
-      // Wait for any running node to complete
       if (running.size > 0) {
         await Promise.race(running.values());
       }
     }
 
-    this.activeRuns.delete(chainId);
-
-    if (!cancelled()) {
-      send('chain_done', { totalNodes: nodes.length });
-    }
+    return { outputs: nodeOutputs, durationMs: Date.now() - startTime, cost: hasCost ? totalCost : null };
   }
 }
