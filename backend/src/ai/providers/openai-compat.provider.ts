@@ -118,11 +118,21 @@ export class OpenAiCompatProvider implements LlmProvider {
       messages.push({ role: 'user', content: request.prompt });
     }
 
-    return {
+    const params: any = {
       model: request.model,
       messages,
       temperature: request.temperature,
       max_tokens: request.maxTokens,
     };
+
+    // Together AI uses `reasoning` param (e.g. GLM-5 has thinking on by default)
+    // Must explicitly disable it when not requested, otherwise models like GLM-5 think by default
+    if (request.thinking?.enabled) {
+      params.reasoning = { enabled: true };
+    } else {
+      params.reasoning = { enabled: false };
+    }
+
+    return params;
   }
 }

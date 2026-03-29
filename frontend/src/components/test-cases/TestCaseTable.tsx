@@ -91,8 +91,8 @@ function RowActions({ row }: { row: TestCase }) {
 }
 
 // Fixed-width column totals
-const FIXED_COL_WIDTH = { select: 40, status: 80, actions: 100, cost: 75, time: 65 };
-const FIXED_TOTAL = FIXED_COL_WIDTH.select + FIXED_COL_WIDTH.status + FIXED_COL_WIDTH.actions + FIXED_COL_WIDTH.cost + FIXED_COL_WIDTH.time;
+const FIXED_COL_WIDTH = { select: 40, row: 40, status: 80, actions: 100, cost: 75, time: 65 };
+const FIXED_TOTAL = FIXED_COL_WIDTH.select + FIXED_COL_WIDTH.row + FIXED_COL_WIDTH.status + FIXED_COL_WIDTH.actions + FIXED_COL_WIDTH.cost + FIXED_COL_WIDTH.time;
 
 export function TestCaseTable() {
   const testCases = useStore((s) => s.testCases);
@@ -198,6 +198,16 @@ export function TestCaseTable() {
         },
         size: FIXED_COL_WIDTH.select,
         minSize: 40,
+        enableResizing: false,
+      },
+      {
+        id: 'row',
+        header: '#',
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground font-mono">{row.index + 1}</span>
+        ),
+        size: FIXED_COL_WIDTH.row,
+        minSize: 36,
         enableResizing: false,
       },
     ];
